@@ -400,8 +400,13 @@ public static class CompliancePath
     /// <summary>The pending restart (a signal; the user restarts when the organization allows it).</summary>
     private static HealthResult RestartRow(HealthResult source)
     {
-        var row = Row(Restart, source.Status, source.Detail, source.Status == HealthStatus.Pass ? "No restart is waiting." : "Restart when your organization allows it, then check the status in Company Portal again.");
+        var hint = source.Status == HealthStatus.Pass ? "No restart is waiting."
+            // Unread is no pass, and no restart to ask for either.
+            : source.NotRead ? "Use Check this PC again on Home in a moment."
+            : "Restart when your organization allows it, then check the status in Company Portal again.";
+        var row = Row(Restart, source.Status, source.Detail, hint);
         row.ServiceUnavailable = source.ServiceUnavailable;
+        row.NotRead = source.NotRead;
         return row;
     }
 }

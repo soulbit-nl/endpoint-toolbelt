@@ -75,6 +75,9 @@ public class NamingTests
         Assert.Contains(@"<Package Name=""Endpoint Toolbelt""", wxs);
         Assert.Contains(@"Manufacturer=""SoulBit""", wxs);
         Assert.Contains(@"<Property Id=""ARPCOMMENTS"" Value=""Endpoint Toolbelt by SoulBit: self-service repair for Intune-managed Windows devices""", wxs);
+        // Programs and Features has the About dialog's two links (packaging tools read them too).
+        Assert.Contains($@"<Property Id=""ARPURLINFOABOUT"" Value=""{ProductInfo.ProductsUrl}"" />", wxs);
+        Assert.Contains($@"<Property Id=""ARPHELPLINK"" Value=""{ProductInfo.SourceUrl}"" />", wxs);
         Assert.DoesNotContain("for Microsoft Intune", wxs);
         Assert.Contains(@"DisplayName=""Endpoint Toolbelt Service""", wxs);
         Assert.Contains(@"Name=""EndpointToolbeltService""", wxs);

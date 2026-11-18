@@ -232,6 +232,30 @@ public class AppWordingTests
     }
 
     [Fact]
+    public void A_retry_skipped_for_other_users_says_sync_requested_never_retry_requested()
+    {
+        var outcome = new RunOutcome { Action = ToolbeltAction.RetryAppsAndPolicies };
+        Assert.False(ResultPresenter.RetrySkipped(outcome));
+        outcome.Records.Add(new EngineRecord { Type = "finding", Id = "IME-REFRESH-SKIPPED", Severity = "info" });
+        Assert.True(ResultPresenter.RetrySkipped(outcome));
+        foreach (var fails in new[] { 0, 1 })
+        {
+            foreach (var warns in new[] { 0, 2 })
+            {
+                foreach (var apps in new[] { AppsAfterRetry.Unknown, AppsAfterRetry.AllDetected, AppsAfterRetry.SomeFailing })
+                {
+                    var text = ResultPresenter.RetryDone(fails, warns, apps, retrySkipped: true);
+                    Assert.StartsWith("Sync requested", text.Text);
+                    Assert.DoesNotContain("Retry requested", text.Text);
+                    Assert.DoesNotContain("Done", text.Text);
+                    Assert.Contains("The app retry was skipped", text.Text);
+                    Assert.NotEqual(Tone.Success, text.Tone);
+                }
+            }
+        }
+    }
+
+    [Fact]
     public void Retry_with_no_failures_but_a_warning_says_so()
     {
         var one = ResultPresenter.RetryDone(0, 1, AppsAfterRetry.Unknown);

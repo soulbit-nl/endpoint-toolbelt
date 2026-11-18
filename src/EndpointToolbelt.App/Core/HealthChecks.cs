@@ -56,6 +56,13 @@ public sealed class HealthResult
     public bool ServiceUnavailable { get; set; }
 
     /// <summary>
+    /// The state behind the row could not be read (the pending restart, when Windows servicing's keys
+    /// cannot be opened). The row is not OK, so it is no go; and it claims nothing the state would
+    /// say, so no part of the app says that a restart is waiting.
+    /// </summary>
+    public bool NotRead { get; set; }
+
+    /// <summary>
     /// The hint shown as a line under the row: only for a check that is not OK, and only its first
     /// sentence, what is wrong. With a fix link the link says what to do; without one a hint
     /// that sends the user to IT support says so in a short sentence. The whole hint is the
@@ -402,16 +409,18 @@ public static class HealthChecks
         }
 
         // 9. Pending restart: Windows servicing, or this product's own marker (a repair that
-        // needs a restart the servicing keys do not show).
-        bool servicing;
-        try { servicing = source.ServicingRestartPending(); } catch (Exception) { servicing = false; }
+        // needs a restart the servicing keys do not show). Servicing keys that cannot be read are
+        // no pass: the marker still wins, and without it the row says the status is unknown.
+        bool? servicing;
+        try { servicing = source.ServicingRestartPending(); } catch (Exception) { servicing = null; }
         var markerUtc = status == null ? null : TimeText.ParseUtc(status.RestartRequiredSinceUtc);
-        if (servicing) { results.Add(Make(PendingRestart, HealthStatus.Warn, "Restart required before troubleshooting (Windows servicing)")); }
+        if (servicing == true) { results.Add(Make(PendingRestart, HealthStatus.Warn, "Restart required before troubleshooting (Windows servicing)")); }
         else if (markerUtc != null)
         {
             var by = string.IsNullOrWhiteSpace(status.RestartRequiredBy) ? "an " + ProductInfo.DisplayName + " repair" : status.RestartRequiredBy;
             results.Add(Make(PendingRestart, HealthStatus.Warn, string.Format(CultureInfo.InvariantCulture, "Restart required after {0}, {1}", by, TimeText.InLocalTime(markerUtc.Value, "HH:mm"))));
         }
+        else if (servicing == null) { results.Add(RestartUnknown()); }
         else { results.Add(Make(PendingRestart, HealthStatus.Pass, "No restart pending")); }
 
         // 10-13. Device settings the service reads as SYSTEM.
@@ -522,6 +531,25 @@ public static class HealthChecks
     public const string ImeCheckInFailedHint =
         "The app installer (IME) tried to check in with Intune and that attempt failed. Retry work apps and settings restarts it, so it tries again within a few minutes. If it keeps failing for the same reason, contact your IT support.";
 
+    /// <summary>
+    /// The pending-restart row when Windows servicing's restart keys cannot be read and this
+    /// product's own marker is not set: a warning, never "No restart pending", and never a restart
+    /// that is waiting either.
+    /// </summary>
+    internal static HealthResult RestartUnknown()
+    {
+        var row = Make(PendingRestart, HealthStatus.Warn, "Restart status unknown: Windows servicing could not be read");
+        row.NotRead = true;
+        row.Hint = RestartUnknownHint;
+        row.Support = "The restart keys of Windows servicing (Component Based Servicing, Windows Update) could not be read.";
+        row.HomeTitle = "Restart status unknown";
+        row.HomeLine = "This PC could not tell whether a restart is waiting. Check again in a moment.";
+        return row;
+    }
+
+    public const string RestartUnknownHint =
+        "Whether a restart is waiting could not be read. Use Check this PC again in a moment; if this stays unknown, contact your IT support.";
+
     public const string ImeCheckInUnknownHint =
         "The IME log does not show when the app installer last checked in. Retry work apps and settings restarts it, which makes it check in within a few minutes. If this stays unknown, contact your IT support.";
 
@@ -579,7 +607,7 @@ public static class HealthChecks
         var severity = row.Status switch { HealthStatus.Fail => FindingSeverity.Error, HealthStatus.Warn => FindingSeverity.Warning, _ => FindingSeverity.Ok };
         var title = string.IsNullOrWhiteSpace(row.Detail) ? row.Name + ": " + row.StatusWord : row.Name + ": " + row.Detail;
         // A pending restart is said to IT as a fact; the user is never asked to restart outright.
-        var support = row.Status != HealthStatus.Pass && row.Name == PendingRestart && !row.ServiceUnavailable ? "A restart is waiting on this device."
+        var support = row.Status != HealthStatus.Pass && row.Name == PendingRestart && !row.ServiceUnavailable && !row.NotRead ? "A restart is waiting on this device."
             // A row's own line for IT (the join type, Windows Hello).
             : row.Status != HealthStatus.Pass ? row.Support ?? "" : "";
         var next = NextStep(row);
@@ -627,7 +655,9 @@ public static class HealthChecks
         var fix = row.Fix;
         if (fix != HealthFix.None) { return "Try " + Words.FixLink(fix) + "."; }
         // A signal, never a request to restart: some organizations do not let users restart certain computers.
-        if (row.Name == PendingRestart) { return "Restart when your organization allows it, then try again."; }
+        if (row.Name == PendingRestart && !row.NotRead) { return "Restart when your organization allows it, then try again."; }
+        // Unread: look again first, as the hint and the compliance path say; IT only when it stays.
+        if (row.NotRead) { return "Use Check this PC again in a moment; if it stays unknown, contact your IT support."; }
         // Windows Hello required and not set up: the user's own step, read-only (this app never starts the setup).
         if (row.Name == WindowsHello && (row.Hint ?? "").StartsWith(WorkAccountRows.HelloStep, StringComparison.Ordinal)) { return WorkAccountRows.HelloStep; }
         return (row.Hint ?? "").IndexOf("IT support", StringComparison.OrdinalIgnoreCase) >= 0 ? "Contact your IT support." : "";

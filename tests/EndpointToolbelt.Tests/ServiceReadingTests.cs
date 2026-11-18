@@ -174,7 +174,7 @@ public class FolderRuleTests
     {
         var security = new DirectorySecurity();
         security.SetSecurityDescriptorSddlForm($"O:SYD:(A;OICI;FA;;;SY)(A;OICIIO;{rights};;;BU)");
-        Assert.NotNull(FileSystemSafety.ValidateTrustedSecurity(security));
+        Assert.NotNull(FileSystemSafety.ValidateWriterSecurity(security));
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class FolderRuleTests
         security.SetOwner(WellKnownSids.TrustedInstaller);
         security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
             FileSystemRights.ReadAndExecute, AccessControlType.Allow));
-        Assert.Null(FileSystemSafety.ValidateTrustedSecurity(security));
+        Assert.Null(FileSystemSafety.ValidateWriterSecurity(security));
     }
 
     [Fact]

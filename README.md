@@ -4,10 +4,10 @@
 with Microsoft Intune; how the name is written is in [docs/naming.md](docs/naming.md).
 
 Endpoint Toolbelt is a Windows desktop app that lets employees and IT support find out why a work
-app won't install, why Teams keeps asking to sign in or why Windows Update keeps failing, and fix
-the common causes themselves. Standard users run a fixed set of repairs without administrator
-rights: a small Windows service does the privileged work and decides what may run, how often and
-with which confirmation.
+app won't install or why Windows Update keeps failing, fix the common causes themselves, and hand
+the rest to IT support with the evidence attached. Standard users run a fixed set of repairs
+without administrator rights: a small Windows service does the privileged work and decides what
+may run, how often and with which confirmation.
 
 ![Endpoint Toolbelt: Home with no problems found](docs/images/home-ok.png)
 

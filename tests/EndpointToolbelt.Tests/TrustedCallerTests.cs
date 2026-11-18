@@ -51,7 +51,7 @@ public class TrustedCallerTests : IDisposable
     public void The_trusted_caller_comes_from_the_policy_key()
     {
         var r = new Registry();
-        r.Policy[ProductInfo.TrustedServiceCallerValue] = "  ContosoAgent  ";
+        r.Policy[ProductInfo.ServiceCallerPolicyValue] = "  ContosoAgent  ";
         Assert.Equal("ContosoAgent", ConfigLoader.Load(r).TrustedServiceCaller);
     }
 
@@ -60,7 +60,7 @@ public class TrustedCallerTests : IDisposable
     {
         // The MSI writes the configuration key; only an administrator's policy may open the pipe.
         var r = new Registry();
-        r.Config[ProductInfo.TrustedServiceCallerValue] = "ContosoAgent";
+        r.Config[ProductInfo.ServiceCallerPolicyValue] = "ContosoAgent";
         Assert.Null(ConfigLoader.Load(r).TrustedServiceCaller);
     }
 
@@ -73,7 +73,7 @@ public class TrustedCallerTests : IDisposable
     public void Invalid_or_own_service_names_are_ignored_with_a_warning(string value)
     {
         var r = new Registry();
-        r.Policy[ProductInfo.TrustedServiceCallerValue] = value;
+        r.Policy[ProductInfo.ServiceCallerPolicyValue] = value;
         var c = ConfigLoader.Load(r);
         Assert.Null(c.TrustedServiceCaller);
         Assert.Single(c.Warnings);
@@ -83,7 +83,7 @@ public class TrustedCallerTests : IDisposable
     public void A_service_name_longer_than_80_characters_is_ignored()
     {
         var r = new Registry();
-        r.Policy[ProductInfo.TrustedServiceCallerValue] = new string('a', 81);
+        r.Policy[ProductInfo.ServiceCallerPolicyValue] = new string('a', 81);
         Assert.Null(ConfigLoader.Load(r).TrustedServiceCaller);
     }
 
@@ -91,7 +91,7 @@ public class TrustedCallerTests : IDisposable
     public void A_non_string_value_is_ignored_with_a_warning()
     {
         var r = new Registry();
-        r.Policy[ProductInfo.TrustedServiceCallerValue] = 1;
+        r.Policy[ProductInfo.ServiceCallerPolicyValue] = 1;
         var c = ConfigLoader.Load(r);
         Assert.Null(c.TrustedServiceCaller);
         Assert.Single(c.Warnings);

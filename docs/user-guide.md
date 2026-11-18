@@ -1,7 +1,7 @@
 # Endpoint Toolbelt user guide
 
 This guide is for you if you use a work PC and something does not work as it should. You do
-not need any technical knowledge. It describes version 1.0.0.
+not need any technical knowledge. It describes version 1.0.1.
 
 ## What Endpoint Toolbelt is
 
@@ -397,6 +397,8 @@ support.
 **I ran Retry work apps and settings, but my app is still not there.**
 That is normal at first. The status says "Retry requested": your PC asked for its apps again, and
 installing happens in the background. Wait a few minutes, then select **Check this app again**.
+When it says "Sync requested", other people are signed in to this PC, so only the request to your
+organization went out; the app is tried again later by itself.
 
 **Will a repair delete my files?**
 No. The repairs remove caches and temporary files that Windows or an app creates again by itself.

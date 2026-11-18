@@ -175,8 +175,13 @@ public static class ResultPresenter
     /// <param name="failedChecks">Health checks with a problem.</param>
     /// <param name="warnChecks">Health checks with a point to check.</param>
     /// <param name="apps">What is known about the apps after the retry.</param>
-    public static (string Text, Tone Tone) RetryDone(int failedChecks, int warnChecks, AppsAfterRetry apps)
+    /// <param name="retrySkipped">
+    /// The IME restart and timer clear were skipped (other people signed in, IME-REFRESH-SKIPPED):
+    /// only the sync was requested, so the status says that, and never "Retry requested".
+    /// </param>
+    public static (string Text, Tone Tone) RetryDone(int failedChecks, int warnChecks, AppsAfterRetry apps, bool retrySkipped = false)
     {
+        if (retrySkipped) { return SyncOnlyDone(failedChecks, warnChecks); }
         var checks = failedChecks > 0
             ? Words.Count(failedChecks, "problem") + (failedChecks == 1 ? " remains" : " remain") + " in the health checks"
             : warnChecks > 0
@@ -196,6 +201,25 @@ public static class ResultPresenter
         if (failedChecks > 0) { return ("Retry requested, but " + checks + "." + pending + " Create a support package if the problems stay.", Tone.Warning); }
         if (warnChecks > 0) { return ("Retry requested. No problems in the health checks, but " + Words.Count(warnChecks, "point") + (warnChecks == 1 ? " needs" : " need") + " checking." + pending, Tone.Warning); }
         return ("Retry requested. Intune was asked to check this device again." + pending, Tone.Neutral);
+    }
+
+    /// <summary>The finding of a Retry work apps and settings run whose IME half stood down for other signed-in users.</summary>
+    public const string RetrySkippedId = "IME-REFRESH-SKIPPED";
+
+    /// <summary>Whether the run's IME restart and timer clear were skipped (its IME-REFRESH-SKIPPED finding).</summary>
+    public static bool RetrySkipped(RunOutcome outcome)
+        => outcome?.Records.Any(r => r.Type == "finding" && r.Id == RetrySkippedId) == true;
+
+    private static (string Text, Tone Tone) SyncOnlyDone(int failedChecks, int warnChecks)
+    {
+        // Nothing was retried: the IME keeps its own schedule (the result names when, if apps had failed).
+        const string skipped = " The app retry was skipped because other people may be signed in to this device; the IME tries failed apps again by itself, on its own schedule.";
+        if (failedChecks > 0)
+        {
+            return ("Sync requested, but " + Words.Count(failedChecks, "problem") + (failedChecks == 1 ? " remains" : " remain") + " in the health checks." + skipped + " Create a support package if the problems stay.", Tone.Warning);
+        }
+        if (warnChecks > 0) { return ("Sync requested. No problems in the health checks, but " + Words.Count(warnChecks, "point") + (warnChecks == 1 ? " needs" : " need") + " checking." + skipped, Tone.Warning); }
+        return ("Sync requested. Intune was asked to check this device again." + skipped, Tone.Neutral);
     }
 
     /// <summary>The findings as cards: problems first, then the points to check, then the rest in order.</summary>

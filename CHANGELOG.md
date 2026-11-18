@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-11-18
+
+Fixes from an external review of 1.0.0, and links in Programs and Features.
+
+### Added
+
+- **Programs and Features links:** the MSI sets `ARPURLINFOABOUT` (`https://soulbit.app/go/endpoint-toolbelt`)
+  and `ARPHELPLINK` (`https://github.com/soulbit-nl/endpoint-toolbelt`), the About dialog's two
+  links, so Windows and packaging tools can find the documentation.
+
+### Changed
+
+- **README:** the introduction names the handover to IT support with the evidence, instead of a
+  sign-in example.
+
+### Fixed
+
+- **Device health:** when Windows servicing's restart state cannot be read, the restart row is a
+  warning, "Restart status unknown", instead of "No restart pending". A restart this app's own
+  repair asked for still shows as such. The unknown state is not shown as a restart that waits.
+- **Retry work apps and settings:** while other people are signed in, the IME restart and the
+  timer clear are skipped. The run's log now says so instead of "The IME restarted", and the
+  status says "Sync requested" instead of "Retry requested". The exit code stays 0.
+- **Docs:** the admin guide asks for evidence before an attack surface reduction rule is treated as
+  the cause of error 1920. Service Control Manager event 7000 with "Access is denied" is the
+  symptom; Defender event 1121 confirms the rule; without it, read the MSI log first. The deployment
+  status says the MSI was installed through Intune; supersedence is not tried yet.
+
 ## [1.0.0] - 2026-11-18
 
 The first public release.
@@ -58,4 +86,5 @@ The first public release.
 - The attack surface reduction rule for prevalence and age can block a new release on its first
   days; see [docs/asr.md](docs/asr.md).
 
+[1.0.1]: https://github.com/soulbit-nl/endpoint-toolbelt/releases/tag/v1.0.1
 [1.0.0]: https://github.com/soulbit-nl/endpoint-toolbelt/releases/tag/v1.0.0

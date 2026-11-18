@@ -141,6 +141,7 @@ public static class HealthView
         Detail = detail,
         Hint = source.Hint,
         ServiceUnavailable = source.ServiceUnavailable,
+        NotRead = source.NotRead,
         Info = source.Info,
         Support = source.Support,
         HomeTitle = source.HomeTitle,

@@ -44,7 +44,7 @@ public static class ProductInfo
     public const string CallerPipeName = "EndpointToolbelt.Caller";
 
     /// <summary>Policy value (under <see cref="PolicyKey"/> only) that names the trusted service caller.</summary>
-    public const string TrustedServiceCallerValue = "TrustedServiceCaller";
+    public const string ServiceCallerPolicyValue = "TrustedServiceCaller";
 
     public const string RegistryRoot = @"SOFTWARE\EndpointToolbelt";
     public const string ConfigKey = RegistryRoot + @"\Config";

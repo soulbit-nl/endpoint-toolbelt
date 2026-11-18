@@ -208,7 +208,7 @@ public sealed class TrustedCallerPipe : IDisposable
             }
             _server = server;
             _lastProblem = null;
-            var message = $"The trusted service caller pipe is open for the service '{serviceName}' (policy {ProductInfo.TrustedServiceCallerValue}).";
+            var message = $"The trusted service caller pipe is open for the service '{serviceName}' (policy {ProductInfo.ServiceCallerPolicyValue}).";
             _log.Info(message);
             _events.Write(EndpointToolbelt.EventId.TrustedCallerPipe, EventLogEntryType.Information, message);
         }
