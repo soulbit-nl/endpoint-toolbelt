@@ -345,6 +345,23 @@ public class EngineAppActionTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Retry_apps_and_policies_logs_only_what_happened_with_a_verified_sync(bool skipped)
+    {
+        var handler = new RetryAppsAndPoliciesHandler { Parts = Parts(() => Ime(skipped: skipped, cleared: !skipped), () => Sync(0)) };
+        Assert.Equal(0, handler.Run(Run()));
+        var log = string.Join("\n", _h.Lines);
+        Assert.Contains("the Intune sync was verified", log, StringComparison.OrdinalIgnoreCase);
+        if (skipped)
+        {
+            Assert.DoesNotContain("The IME restarted", log);
+            Assert.Contains("The IME restart and the retry-timer clear were skipped", log);
+        }
+        else { Assert.Contains("The IME restarted and the app retry timers were cleared", log); }
+    }
+
+    [Theory]
     [InlineData("cleared", false, true, true, 0)]
     [InlineData("skipped for other users", true, false, true, 1)]
     [InlineData("clear failed", false, false, true, 1)]

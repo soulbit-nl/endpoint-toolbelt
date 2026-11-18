@@ -1,14 +1,17 @@
 # Deployment
 
 > **Status:** the MSI is built by `build\build.ps1` (WiX 5.0.2, `installer\`); its install,
-> repair, upgrade, downgrade refusal and uninstall are tested in Windows Sandbox. The Intune
-> section has not been tried against a tenant yet.
+> repair, upgrade, downgrade refusal and uninstall are tested in Windows Sandbox. Steps 1 to 4 of
+> the Intune section are used in a tenant: for 1.0.0, a real test device received the MSI from
+> Intune as a Win32 app with MSI detection. Step 5 (supersedence) needs a second version and is
+> not tried yet.
 
 ## What IT support should expect
 
 Before a broad rollout, read [What IT support should expect](admin-guide.md#before-a-broad-rollout)
-in the README: no central view, what is not repaired, what
+in the admin guide: no central view, what is not repaired, what
 works without a connection, English only, and what is not confirmed on real devices yet.
+
 ## Package
 
 - `EndpointToolbelt-<version>-x64.msi`: per-machine, x64, Windows Installer 5.0.
@@ -74,6 +77,9 @@ WiX elements only):
   `D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)`,
   so interactive users may start the service (the app does when it is stopped) but not
   stop or reconfigure it.
+- **Programs and Features:** the comment, the icon, no Modify button, and the About dialog's
+  two links: `ARPURLINFOABOUT` (`https://soulbit.app/go/endpoint-toolbelt`) and `ARPHELPLINK`
+  (`https://github.com/soulbit-nl/endpoint-toolbelt`), from 1.0.1.
 - **Registry:** create `HKLM\SOFTWARE\EndpointToolbelt` with its `Config` and `State` keys
   (64-bit view) with the protected ACL `D:PAI(A;CI;KA;;;SY)(A;CI;KA;;;BA)` (SYSTEM and
   Administrators full control, inherited by subkeys, no entries for users). Windows
@@ -297,7 +303,9 @@ public trust certificate has it, so it does not identify SoulBit. Use the longer
   Where-Object { $_.ObjectId -like '1.3.6.1.4.1.311.97.*' -and $_.ObjectId -ne '1.3.6.1.4.1.311.97.1.0' }
 ```
 
-It stays the same for every release signed with the same certificate profile.
+It stays the same for every release signed with the same certificate profile. For Endpoint
+Toolbelt it is `1.3.6.1.4.1.311.97.100024863.82454340.271114909.135555930` (read from the
+signed 1.0.0 MSI).
 
 To sign with your own certificate:
 

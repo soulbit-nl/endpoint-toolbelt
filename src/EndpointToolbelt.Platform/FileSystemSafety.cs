@@ -355,11 +355,11 @@ public static class FileSystemSafety
         if (handle == null) { return "missing"; }
         using (handle)
         {
-            return ValidateTrustedSecurity(NativeFile.ReadSecurity(handle));
+            return ValidateWriterSecurity(NativeFile.ReadSecurity(handle));
         }
     }
 
-    internal static string ValidateTrustedSecurity(FileSystemSecurity security)
+    internal static string ValidateWriterSecurity(FileSystemSecurity security)
     {
         var trusted = new[] { WellKnownSids.LocalSystem, WellKnownSids.Administrators, WellKnownSids.TrustedInstaller };
         var owner = security.GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
@@ -396,7 +396,7 @@ public static class FileSystemSafety
         foreach (var file in new DirectoryInfo(folder).EnumerateFiles())
         {
             if ((file.Attributes & FileAttributes.ReparsePoint) != 0) { return $"{file.Name} is a link"; }
-            var r = ValidateTrustedSecurity(file.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
+            var r = ValidateWriterSecurity(file.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
             if (r != null) { return $"{file.Name} is not protected ({r})"; }
         }
         return null;
@@ -407,7 +407,7 @@ public static class FileSystemSafety
     {
         for (var parent = new DirectoryInfo(Path.GetFullPath(folder)).Parent; parent?.Parent != null; parent = parent.Parent)
         {
-            var reason = ValidateTrustedSecurity(readSecurity(parent));
+            var reason = ValidateWriterSecurity(readSecurity(parent));
             if (reason != null) { return $"a parent of the install folder is not protected ({parent.FullName}: {reason})"; }
         }
         return null;
@@ -427,7 +427,7 @@ public static class FileSystemSafety
             var security = item is DirectoryInfo dir
                 ? (FileSystemSecurity)dir.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access)
                 : ((FileInfo)item).GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access);
-            return ValidateTrustedSecurity(security) == null;
+            return ValidateWriterSecurity(security) == null;
         }
         catch (Exception)
         {
@@ -518,12 +518,12 @@ public static class FileSystemSafety
             if ((entry.Attributes & FileAttributes.ReparsePoint) != 0) { return Fixed($"{entry.Name} is a link"); }
             if (entry is DirectoryInfo dir)
             {
-                var r = ValidateTrustedSecurity(dir.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
+                var r = ValidateWriterSecurity(dir.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
                 if (r != null) { return Fixed($"{dir.Name} is not protected ({r})"); }
             }
             else if (entry is FileInfo file)
             {
-                var r = ValidateTrustedSecurity(file.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
+                var r = ValidateWriterSecurity(file.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access));
                 if (r != null) { return Fixed($"{file.Name} is not protected ({r})"); }
                 var problem = OpenProblem(file);
                 if (problem != null) { return problem; }

@@ -57,10 +57,13 @@ public sealed class RetryAppsAndPoliciesHandler : IActionHandler
         else
         {
             exitCode = EngineExitCode.Success;
-            run.Log("The IME restarted and the app retry timers were cleared; the Intune sync was verified. Assigned apps are evaluated now; how long one takes to arrive depends on its size.");
+            // Exit 0 also when the IME half was skipped (documented): the line says what happened.
+            run.Log(ime.Skipped
+                ? "The Intune sync was verified. The IME restart and the retry-timer clear were skipped, because other people are signed in or their number could not be read; the IME tries failed apps again by itself, on its own schedule."
+                : "The IME restarted and the app retry timers were cleared; the Intune sync was verified. Assigned apps are evaluated now; how long one takes to arrive depends on its size.");
         }
 
-        var imeText = ime.Skipped ? "skipped (other users signed in)" : ime.Ok && !ime.Warn ? "completed" : "completed with warnings";
+        var imeText = ime.Skipped ? "skipped (other users signed in, or their number unknown)" : ime.Ok && !ime.Warn ? "completed" : "completed with warnings";
         run.Log(string.Format(CultureInfo.InvariantCulture, "Scope: IME restart and retry-timer clear {0}; Intune sync {1}. Not checked: whether a particular app installed or every policy applied.",
             imeText, Mdm.FormatStatus(sync.Status)));
         return exitCode;

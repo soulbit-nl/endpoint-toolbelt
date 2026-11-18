@@ -990,10 +990,11 @@ public partial class MainWindow : Window
         if (outcome.Action == ToolbeltAction.RetryAppsAndPolicies)
         {
             // A retry the engine ran is a remedy for every app it retries, tied to the
-            // diagnosis they came from and to this run.
+            // diagnosis they came from and to this run; a run whose IME half stood down for
+            // other signed-in users retried nothing.
             var retried = _retryApps;
             _retryApps = null;
-            if (ResultPresenter.BelongsInHistory(outcome) && retried is { Count: > 0 })
+            if (ResultPresenter.BelongsInHistory(outcome) && retried is { Count: > 0 } && !ResultPresenter.RetrySkipped(outcome))
             {
                 RecordRemedies(retried, RemedyKind.RetryAppsAndPolicies, outcome.RunId ?? "", _retryPressedUtc);
             }
@@ -1030,7 +1031,8 @@ public partial class MainWindow : Window
                     SetStatus("Retry work apps and settings finished. Checking the retried apps once (read-only)...", Tone.Neutral, announce: false);
                     if (await AutoPostCheckAsync()) { apps = PostCheck.AfterRetry(group); }
                 }
-                var (text, tone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, apps);
+                // Skipped for other signed-in users: only the sync was requested, and no app was retried.
+                var (text, tone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, apps, ResultPresenter.RetrySkipped(outcome));
                 SetStatus(text, tone);
             }
         }
@@ -1818,7 +1820,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The Pending restart row says a restart is waiting (Windows servicing or a repair of this app).</summary>
-    private bool RestartPending() => _healthRows.Any(r => r.Name == HealthChecks.PendingRestart && r.Status != HealthStatus.Pass && !r.ServiceUnavailable);
+    private bool RestartPending() => _healthRows.Any(r => r.Name == HealthChecks.PendingRestart && r.Status != HealthStatus.Pass && !r.ServiceUnavailable && !r.NotRead);
 
     /// <summary>
     /// Home's uptime line ("Restarted 12 days ago"); after <see cref="Uptime.LongUptime"/> or longer,

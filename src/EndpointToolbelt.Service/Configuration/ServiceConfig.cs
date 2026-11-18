@@ -115,7 +115,7 @@ public static class ConfigLoader
         c.AllowMachineWideOnMultiSession = ReadInt(reader, c, "AllowMachineWideOnMultiSession", 1, 0, 1) == 1;
         c.SupportText = ReadText(reader, c, "SupportText", MaxSupportTextLength, isUrl: false);
         c.SupportUrl = ReadText(reader, c, "SupportUrl", MaxSupportUrlLength, isUrl: true);
-        c.TrustedServiceCaller = ReadServiceName(reader, c, ProductInfo.TrustedServiceCallerValue);
+        c.TrustedServiceCaller = ReadServiceName(reader, c, ProductInfo.ServiceCallerPolicyValue);
         // From the policy key only, as TrustedServiceCaller: the MSI never switches a tool off.
         c.DisabledTools = ToolPolicy.Parse(reader.GetValue(ProductInfo.PolicyKey, ToolPolicy.ValueName), c.Warnings);
         return c;

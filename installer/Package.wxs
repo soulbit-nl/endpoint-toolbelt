@@ -15,6 +15,11 @@
     <!-- The full form, once per surface: the summary and the Programs and Features comment. -->
     <SummaryInformation Description="Endpoint Toolbelt by SoulBit: self-service repair for Intune-managed Windows devices" />
     <Property Id="ARPCOMMENTS" Value="Endpoint Toolbelt by SoulBit: self-service repair for Intune-managed Windows devices" />
+    <!-- The two links of the About dialog (ProductInfo.ProductsUrl and SourceUrl), also in
+         Programs and Features: the publisher's own redirect, and the source with its documentation.
+         Packaging tools read them to find the publisher's documentation. -->
+    <Property Id="ARPURLINFOABOUT" Value="https://soulbit.app/go/endpoint-toolbelt" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/soulbit-nl/endpoint-toolbelt" />
 
     <!-- A newer version replaces this one in place (the old one is removed first, without the
          remove-state step, so results, state and configuration stay); an older one is refused.

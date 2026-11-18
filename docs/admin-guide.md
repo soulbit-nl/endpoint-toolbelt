@@ -74,10 +74,15 @@ and use `$env:TEMP` instead of `%TEMP%`.
 The installer creates the app and the service in `C:\Program Files\SoulBit\Endpoint Toolbelt`
 and a Start Menu shortcut "Endpoint Toolbelt".
 
-**The app does not start, or the install fails with error 1920?** On devices with Microsoft
-Defender's attack surface reduction rules, the rule "Block executable files from running unless
-they meet a prevalence, age, or trusted list criterion" can block a new release on its first days
-(Defender event 1121). [asr.md](asr.md) explains how to allow the Toolbelt without switching the
+**The app does not start, or the install fails with error 1920?** Error 1920 only says that the
+service did not start. Confirm the cause before you allow anything. Service Control Manager event
+7000 for Endpoint Toolbelt Service with "Access is denied" in the System log is the symptom of a
+block; Microsoft Defender event 1121 for the Toolbelt confirms that an attack surface reduction
+rule caused it. Without event 1121, read the MSI log first (`/l*v`, above). With it: on devices
+with Microsoft Defender's attack surface reduction rules, the rule "Block executable files from
+running unless they meet a prevalence, age, or trusted list criterion" can block a new release on
+its first days.
+[asr.md](asr.md) explains how to allow the Toolbelt without switching the
 rule off.
 
 Uninstall removes the program, the service, the service's working folder, the

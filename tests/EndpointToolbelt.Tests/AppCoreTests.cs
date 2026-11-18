@@ -176,13 +176,14 @@ public class AppHealthTests
         public bool Reach { get; set; } = true;
         public double FreeGB { get; set; } = 100;
         public bool Servicing { get; set; }
+        public bool ServicingUnreadable { get; set; }
 
         public string ImeServiceStatus() => Ime;
         public DsregInfo Dsreg() => Info;
         public DateTime? MdmCertificateExpiryUtc() => Cert;
         public bool CanReach(string host, int port, int timeoutMs) => Reach;
         public double FreeSystemDriveGB() => FreeGB;
-        public bool ServicingRestartPending() => Servicing;
+        public bool ServicingRestartPending() => ServicingUnreadable ? throw new UnauthorizedAccessException("servicing keys") : Servicing;
 
         // The HTTPS step of the connection check answers as the TCP step does (no proxy).
         public Uri BrowserProxy(Uri target) => null;
@@ -415,6 +416,36 @@ public class AppHealthTests
         var summary = HealthChecks.Summary(HealthChecks.Run(new FakeSource { Reach = false, Servicing = true }, Status(), out _));
         Assert.Equal(Tone.Error, summary.Tone);
         Assert.StartsWith("1 problem found.", summary.Text);
+    }
+
+    [Fact]
+    public void An_unreadable_servicing_state_is_no_pass_and_no_waiting_restart()
+    {
+        var unknown = Check(new FakeSource { ServicingUnreadable = true }, Status(), HealthChecks.PendingRestart);
+        Assert.Equal(HealthStatus.Warn, unknown.Status);
+        Assert.StartsWith("Restart status unknown", unknown.Detail);
+        Assert.True(unknown.NotRead);
+        // Unknown claims no waiting restart: not in the step, the card for IT, Home or the compliance path.
+        Assert.StartsWith("Use Check this PC again in a moment", HealthChecks.NextStep(unknown));
+        Assert.DoesNotContain("restart is waiting", HealthChecks.Card(unknown).Support);
+        Assert.DoesNotContain("A restart is waiting", unknown.Hint);
+        var home = HomeSummary.Build(HealthView.Rows(new[] { unknown }), null, false);
+        Assert.Equal("Restart status unknown", HomeSummary.PlainTitle(home));
+        Assert.DoesNotContain("Restart when", HomeSummary.PlainText(home));
+        var compliance = CompliancePath.Rows(HealthChecks.Run(new FakeSource { ServicingUnreadable = true }, Status(), out _), Status());
+        var restart = compliance.Single(r => r.Name == CompliancePath.WindowsRestart);
+        Assert.Equal(HealthStatus.Warn, restart.Status);
+        Assert.DoesNotContain("Restart when", CompliancePath.NextStep(restart));
+    }
+
+    [Fact]
+    public void The_restart_marker_wins_over_an_unreadable_servicing_state()
+    {
+        var marker = Check(new FakeSource { ServicingUnreadable = true }, Status(s => { s.RestartRequiredSinceUtc = "2026-10-15T09:00:00Z"; s.RestartRequiredBy = "Repair Windows Update"; }), HealthChecks.PendingRestart);
+        Assert.Equal(HealthStatus.Warn, marker.Status);
+        Assert.Contains("after Repair Windows Update", marker.Detail);
+        Assert.False(marker.NotRead);
+        Assert.Contains("Restart when your organization allows it", marker.Hint);
     }
 
     [Fact]

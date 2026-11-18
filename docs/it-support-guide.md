@@ -34,7 +34,7 @@ claimed only when the run's end was confirmed.
 
 ```text
 Endpoint Toolbelt · Sync clock · Reference 3f9c2a71
-App version · 1.0.0
+App version · 1.0.1
 Last restart · 2026-11-02 08:12 UTC+01:00 (12 days ago); for IT: the device has not restarted for 12 days
 Join type · Microsoft Entra joined
 MDM enrollment ID · 11111111-2222-3333-4444-555555555555
@@ -95,7 +95,7 @@ confirmation as the tool's own button.
 | Network to Intune ("Connection to work services") | One TCP and one HTTPS attempt to the device management service, directly or through the user's proxy, and through the machine proxy | Answered: OK. An inspecting proxy, answered for the user only, or not confirmed: Warning. A network sign-in page, a failed secure connection or not reachable: Problem | Check Microsoft connections |
 | Configuration profiles ("Work settings") | The MDM admin event log (the service): settings that failed to apply or to be removed in the last 7 days | Any failed setting is a Warning, with the first three named in plain words and when each last failed; a failed removal reads "removing ... failed". The log is not compared with the current assignment: a failure stays listed for 7 days, also after the setting applied or its profile was unassigned, and the hint says so. Never a Problem. Only Windows Hello settings that cannot apply on a virtual machine or multi-session host: Info | Retry work apps and settings (a link; Check this PC again is the main step) |
 | Free disk space | The system drive | Under 5 GB a Problem, under 15 GB a Warning | Free up disk space |
-| Pending restart ("Restart") | The servicing and Windows Update restart flags, and the Toolbelt's own restart marker | A Warning or OK, never a Problem | None: the user restarts when the organization allows it |
+| Pending restart ("Restart") | The servicing and Windows Update restart flags, and the Toolbelt's own restart marker | A Warning or OK, never a Problem; flags that cannot be read give the Warning "Restart status unknown" (the marker still wins), never OK | None: the user restarts when the organization allows it |
 | Clock | The time source and its offset (`w32tm`), the virtual machine time provider | Under 60 seconds OK, under 5 minutes a Warning, 5 minutes or more a Problem. Kept by the virtual machine host: Info | Sync clock (only when the time service is not running or the offset is off) |
 | Microsoft Defender | Defender's status through WMI | Passive or EDR block mode: OK. Real-time protection off: a Problem without a fix. Security intelligence older than 7 days: a Problem, older than 3 days: a Warning | Update Defender definitions |
 
@@ -173,7 +173,8 @@ one app."
   (APP-DOWNLOAD-STUCK).
 - **While other users are signed in:** the IME restart and the timer clear are skipped
   (IME-REFRESH-SKIPPED); the result then estimates when the IME retries each failed app by itself
-  (24 hours after the failure).
+  (24 hours after the failure). The exit code stays 0 when the sync was verified; the log says that
+  only the sync ran, and the status says "Sync requested", not "Retry requested".
 - **Next:** the status says "Retry requested" until the retried apps are detected again. The app
   checks the retried apps once by itself after a successful run.
 
@@ -424,7 +425,9 @@ The absence of an error is never taken as success. Steps are kept per user in
 older than seven days is history and no longer shown.
 
 After Retry work apps and settings the status stays "Retry requested" until every retried app is
-detected again; "Done" only then and with clean health checks.
+detected again; "Done" only then and with clean health checks. A run whose IME restart and timer
+clear were skipped for other signed-in users (IME-REFRESH-SKIPPED) says "Sync requested" and
+records no step for the apps, because none was retried.
 
 ## Read the support package
 
