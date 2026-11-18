@@ -1,0 +1,31 @@
+# Normalize text files and check them out with CRLF, so that Authenticode
+# signatures on PowerShell files stay valid when an organization signs them.
+* text=auto eol=crlf
+
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.psd1  text eol=crlf
+*.cs    text eol=crlf diff=csharp
+*.xaml  text eol=crlf
+*.wxs   text eol=crlf
+*.wxi   text eol=crlf
+*.props text eol=crlf
+*.csproj text eol=crlf
+*.wixproj text eol=crlf
+*.md    text eol=crlf
+*.json  text eol=crlf
+
+# Files consumed by tools that expect LF
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sh    text eol=lf
+
+# Binaries
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.msi   binary
+*.dll   binary
+*.exe   binary
+*.zip   binary
+*.xlsx  binary

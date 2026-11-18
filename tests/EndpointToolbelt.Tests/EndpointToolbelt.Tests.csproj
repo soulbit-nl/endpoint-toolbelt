@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <!-- Code coverage (build.ps1 -Coverage); a test-time tool only. -->
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EndpointToolbelt.App\EndpointToolbelt.App.csproj" />
+    <ProjectReference Include="..\..\src\EndpointToolbelt.Contracts\EndpointToolbelt.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\EndpointToolbelt.Engine\EndpointToolbelt.Engine.csproj" />
+    <ProjectReference Include="..\..\src\EndpointToolbelt.Platform\EndpointToolbelt.Platform.csproj" />
+    <ProjectReference Include="..\..\src\EndpointToolbelt.Service\EndpointToolbelt.Service.csproj" />
+    <!-- The test host is started as a process by the contract tests; it is copied next to them. -->
+    <ProjectReference Include="..\EndpointToolbelt.Engine.TestHost\EndpointToolbelt.Engine.TestHost.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="UIAutomationTypes" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+
+</Project>

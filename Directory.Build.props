@@ -1,0 +1,57 @@
+<Project>
+  <!--
+    Single source of truth for the product version. build.ps1 passes it to the
+    engine manifest and to the MSI (ProductVersion). Every build that reaches a
+    device needs a new three-part version.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>Endpoint Toolbelt</Product>
+    <Company>SoulBit</Company>
+    <Authors>SoulBit</Authors>
+    <Copyright>Copyright (c) 2026 SoulBit</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Pinned so the language version does not change with the installed SDK. -->
+    <LangVersion>14.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!--
+    Every project keeps a packages.lock.json with the exact version and content hash of each
+    package it restores, its dependencies included. CI restores in locked mode: a package that
+    is not in the lock file, or whose content differs from its hash, fails the build. The
+    shipped product references no NuGet package; this protects the build and the tests. A
+    deliberate package change updates the lock file in the same commit (a local restore does).
+  -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(GITHUB_ACTIONS)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <!--
+    The .NET Framework 4.8 reference assemblies come from their NuGet package on every machine.
+    The SDK adds that package by itself only where the targeting pack is not installed, so a
+    machine with the pack and one without would restore different packages and the lock files
+    would never match both; the explicit reference makes every build compile against the same
+    reference assemblies. Build-time only: nothing of it ships.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    C# warnings fail the build. NuGet audit warnings (new advisories) stay warnings,
+    so an advisory published later does not break the build of unchanged code.
+    The WiX project decides on its own how it treats ICE warnings.
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <!-- Stricter .NET analyzers, pinned so a newer SDK does not add rules unannounced.
+         Rules turned off on purpose are listed with their reason in .editorconfig. -->
+    <AnalysisLevel>10.0</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Endpoint Toolbelt, per-machine x64 MSI (WiX 5, core elements only; see docs/deployment.md,
+  "What the MSI does").
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Endpoint Toolbelt"
+           Manufacturer="SoulBit"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="{9B5B78FB-4CD9-475D-AC2F-443F6718FA5E}"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <!-- The full form, once per surface: the summary and the Programs and Features comment. -->
+    <SummaryInformation Description="Endpoint Toolbelt by SoulBit: self-service repair for Intune-managed Windows devices" />
+    <Property Id="ARPCOMMENTS" Value="Endpoint Toolbelt by SoulBit: self-service repair for Intune-managed Windows devices" />
+
+    <!-- A newer version replaces this one in place (the old one is removed first, without the
+         remove-state step, so results, state and configuration stay); an older one is refused.
+         A build of the same version (every build has its own product code, so test builds
+         of one version differ) replaces the installed one exactly like an upgrade; without this a
+         second build of one version would install next to the first and could not remove it. The ICE61
+         warning this gives is suppressed in the project file. -->
+    <MajorUpgrade Schedule="afterInstallValidate" AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of Endpoint Toolbelt is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="ProductIcon" SourceFile="$(var.AssetsDir)\EndpointToolbelt.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <!-- 64-bit Windows. The build number cannot be checked here: Windows Installer reports
+         WindowsBuild 9600 on Windows 10 and 11 (its compatibility version), so a build check
+         would refuse every supported device. Supported: Windows 10 22H2 and Windows 11 (README). -->
+    <Launch Condition="Installed OR VersionNT64"
+            Message="Endpoint Toolbelt needs 64-bit Windows 10 or Windows 11." />
+
+    <!-- The product installs below a folder named after its publisher, like other
+         publishers do: C:\Program Files\SoulBit\Endpoint Toolbelt (an installed name that keeps
+         its spelling). Windows Installer removes
+         the publisher folder at uninstall only when nothing else is left in it.
+         Private directory IDs (not all upper case): they cannot be set on the command line. The
+         service runs as SYSTEM from this folder, so it must inherit Program Files' ACL; below
+         C:\ every user could change its files. The service also refuses to start from a folder
+         that is not protected (ToolbeltHost). -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="PublisherFolder" Name="SoulBit">
+        <Directory Id="InstallFolder" Name="Endpoint Toolbelt">
+          <Directory Id="EngineFolder" Name="Engine" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <!-- Binaries ................................................................................ -->
+    <ComponentGroup Id="Binaries" Directory="InstallFolder">
+      <Component Id="ContractsAssembly" Bitness="always64">
+        <File Id="ContractsDll" Source="$(var.BinDir)\EndpointToolbelt.Contracts.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="PlatformAssembly" Bitness="always64">
+        <File Id="PlatformDll" Source="$(var.BinDir)\EndpointToolbelt.Platform.dll" KeyPath="yes" />
+      </Component>
+      <!-- The compiled engine, next to the service; the service starts it for the
+           actions its route table sends there. -->
+      <Component Id="EngineExe" Bitness="always64">
+        <File Id="EngineExe" Source="$(var.BinDir)\EndpointToolbelt.Engine.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="EngineConfigFile" Bitness="always64">
+        <File Id="EngineExeConfig" Source="$(var.BinDir)\EndpointToolbelt.Engine.exe.config" KeyPath="yes" />
+      </Component>
+      <Component Id="AppExe" Bitness="always64">
+        <File Id="AppExe" Source="$(var.BinDir)\EndpointToolbelt.exe" KeyPath="yes">
+          <!-- At the root of the all-users Programs folder, so searching Start finds it. -->
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Endpoint Toolbelt"
+                    Description="Self-service repair for Intune-managed Windows devices"
+                    WorkingDirectory="InstallFolder" Icon="ProductIcon" Advertise="no" />
+        </File>
+      </Component>
+      <Component Id="AppConfigFile" Bitness="always64">
+        <File Id="AppExeConfig" Source="$(var.BinDir)\EndpointToolbelt.exe.config" KeyPath="yes" />
+      </Component>
+      <Component Id="ServiceConfigFile" Bitness="always64">
+        <File Id="ServiceExeConfig" Source="$(var.BinDir)\EndpointToolbelt.Service.exe.config" KeyPath="yes" />
+      </Component>
+      <Component Id="Service" Bitness="always64">
+        <File Id="ServiceExe" Source="$(var.BinDir)\EndpointToolbelt.Service.exe" KeyPath="yes" />
+        <ServiceInstall Id="ServiceInstall"
+                        Name="EndpointToolbeltService"
+                        DisplayName="Endpoint Toolbelt Service"
+                        Description="Runs Endpoint Toolbelt repairs for signed-in users. Stopping it disables the repairs in the Endpoint Toolbelt app."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <!-- Delayed automatic start; recovery also when the service stops with an error
+               code (it exits 1064 when it cannot keep its pipe). The restart actions themselves
+               are set by the service at every start: Windows Installer cannot set restart
+               actions (MsiServiceConfigFailureActions fails with access denied, see
+               docs/deployment.md), and core WiX has no other way. -->
+          <ServiceConfig DelayedAutoStart="yes" OnInstall="yes" OnReinstall="yes"
+                         FailureActionsWhen="failedToStopOrReturnedError" />
+          <!-- Replaces the whole DACL: interactive users may start the service and read its
+               status, never stop or reconfigure it. -->
+          <PermissionEx Sddl="D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)" />
+        </ServiceInstall>
+        <ServiceControl Id="ServiceControl" Name="EndpointToolbeltService" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- The engine's data folder: the IME log pattern table only (no script file is installed). -->
+    <ComponentGroup Id="Engine" Directory="EngineFolder">
+      <Files Include="$(var.EngineDir)\**" />
+    </ComponentGroup>
+
+    <!-- Registry: root, Config and State keys, SYSTEM and Administrators only (protected). The
+         policy key HKLM\SOFTWARE\Policies\EndpointToolbelt is never touched. -->
+    <ComponentGroup Id="RegistryKeys">
+      <Component Id="RegistryRoot" Directory="InstallFolder" Bitness="always64">
+        <RegistryKey Root="HKLM" Key="SOFTWARE\EndpointToolbelt" ForceCreateOnInstall="yes">
+          <PermissionEx Sddl="D:PAI(A;CI;KA;;;SY)(A;CI;KA;;;BA)" />
+          <RegistryValue Name="InstalledVersion" Type="string" Value="$(var.ProductVersion)" KeyPath="yes" />
+          <RegistryKey Key="Config" ForceCreateOnInstall="yes">
+            <PermissionEx Sddl="D:PAI(A;CI;KA;;;SY)(A;CI;KA;;;BA)" />
+          </RegistryKey>
+          <RegistryKey Key="State" ForceCreateOnInstall="yes">
+            <PermissionEx Sddl="D:PAI(A;CI;KA;;;SY)(A;CI;KA;;;BA)" />
+          </RegistryKey>
+        </RegistryKey>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Configuration: see Config.wxs. -->
+
+    <!-- Event log: own log with a write-restricted security descriptor. The service never
+         creates a source; it writes only while this key exists. -->
+    <ComponentGroup Id="EventLog" Directory="InstallFolder">
+      <Component Id="EventLogRegistration" Bitness="always64">
+        <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Endpoint Toolbelt" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+          <RegistryValue Name="File" Type="expandable" Value="%SystemRoot%\System32\Winevt\Logs\Endpoint Toolbelt.evtx" KeyPath="yes" />
+          <RegistryValue Name="MaxSize" Type="integer" Value="4194304" />
+          <RegistryValue Name="Retention" Type="integer" Value="0" />
+          <RegistryValue Name="CustomSD" Type="string" Value="O:BAG:SYD:(A;;0x7;;;SY)(A;;0x7;;;BA)(A;;0x1;;;S-1-5-32-573)" />
+          <RegistryKey Key="Endpoint Toolbelt" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+            <RegistryValue Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+            <RegistryValue Name="TypesSupported" Type="integer" Value="7" />
+          </RegistryKey>
+        </RegistryKey>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Uninstall only (not an upgrade, not a repair): the service removes its SYSTEM-only working
+         folder, the State key and the then empty root. Deferred and not impersonated (SYSTEM),
+         after the service is gone and the Config values are removed, before the files go. Its
+         exit code is ignored: it never fails the uninstall. -->
+    <CustomAction Id="RemoveServiceState" FileRef="ServiceExe" ExeCommand="--remove-state"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RemoveServiceState" After="RemoveRegistryValues"
+              Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+
+    <Feature Id="Main" Title="Endpoint Toolbelt" Level="1">
+      <ComponentGroupRef Id="Binaries" />
+      <ComponentGroupRef Id="Engine" />
+      <ComponentGroupRef Id="RegistryKeys" />
+      <ComponentGroupRef Id="Configuration" />
+      <ComponentGroupRef Id="EventLog" />
+    </Feature>
+  </Package>
+</Wix>

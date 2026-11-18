@@ -1,0 +1,40 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+*.binlog
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.rsuser
+.vscode/*
+!.vscode/extensions.json
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# WiX intermediate output
+*.wixobj
+*.wixpdb
+*.wixlib
+
+# Test and sandbox runs (log files elsewhere, e.g. test fixtures, are tracked)
+tools/sandbox/out/
+/*.log
+
+# Signing material must never be committed
+*.pfx
+*.p12
+*.snk
+*.cer
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store

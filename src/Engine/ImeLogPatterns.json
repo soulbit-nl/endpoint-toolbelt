@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "notes": "The one pattern table for the IME logs, read by the engine (app phases) and the service (check-in). The IME's wording is not documented and changes between versions: every pattern is matched case-insensitively against one CMTrace record's message, the first matching rule wins, and a record no rule matches is no evidence. Named groups: app (an app ID), apps (several app IDs), done and total (download bytes), code (an exit code or error), seconds (the delay of the first check-in after a start; check-in rules of kind start). Only a rule of kind failure makes a failed check-in: a line that merely contains the word failed is no evidence. A rule of kind recovered (the location service's own success after it fell back to another address) cancels every failure written at or before it (to the fraction of a second, so a failure just after a success stays a failure); it is no check-in itself. A rule of kind ignored decides that its record is no evidence at all: the IME (seen on 1.108.101.0), after the location service answered, asks a second address it wrote without a scheme (url checkin.dm..., no https://) and logs the UriFormatException that follows as Failed to Get Endpoint; no request left the device, so it is no failed check-in. The rule needs both the scheme-less url and the exception, so an https address that fails (a malformed proxy, for one) is still a failure; when the IME changes its wording the record falls back to a failure, the cautious side. The IME does not write Get policies at every check-in, so its hourly check-in lines in IntuneManagementExtension.log count as success too: a workload's End app check in (group workload) and the agent's updated throttling info. A rule of kind attempt (Starting app check in, group workload) opens that workload's check-in: the IME may write its End line also after a failed one, so an End counts only when no failure was written between its workload's Starting line and itself (any failure, as a failure line names no workload). The detection rules read the IME's detection-script runs from its agent log: kind script (groups app and rev, from the script's file name only), begin (a new script run that is not a detection script ends the one before), bitness (group wow: True is a 32-bit run), exit (group code) and output (group length, the characters the script wrote). The assignment rules tie the IME's policy lists to their scope, for the rule that an app record is no longer assigned: kind policies (the Get policies line; its list is the text after \"Get policies = \"), session (group user: the user ID the IME processes, all zeros for the device), required (a check-in for the required apps) and available (a check-in for one app chosen in Company Portal, which proves nothing); they are tied together by thread. When they do not match, no record is ever called no longer assigned. Verify on a real device after every IME update.",
+  "detectionFiles": [ "AgentExecutor*.log" ],
+  "detection": [
+    { "id": "detection-script", "kind": "script", "pattern": "[\\\\/]DetectionScripts[\\\\/](?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_(?<rev>\\d{1,9})\\.ps1" },
+    { "id": "detection-begin", "kind": "begin", "pattern": "AgentExecutor gets invoked|cmd line for running powershell is" },
+    { "id": "detection-bitness", "kind": "bitness", "pattern": "runAs32BitOn64 = (?<wow>True|False)\\b" },
+    { "id": "detection-exit", "kind": "exit", "pattern": "Powershell exit code is (?<code>-?\\d{1,10})\\b" },
+    { "id": "detection-output", "kind": "output", "pattern": "length of out=(?<length>\\d{1,9})\\b" }
+  ],
+  "appWorkloadFiles": [ "AppWorkload*.log", "IntuneManagementExtension*.log" ],
+  "appWorkload": [
+    { "id": "subgraph-start", "phase": "Start", "result": "Started", "pattern": "\\[Win32App\\]\\[V3Processor\\] Processing subgraph with app ids: (?<apps>[0-9a-f, -]{36,4000})" },
+    { "id": "download-progress", "phase": "Download", "result": "Progress", "pattern": "Downloading app \\(id = (?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\\b.{0,600}?bytes (?<done>\\d{1,15})/(?<total>\\d{1,15})" },
+    { "id": "download-start", "phase": "Download", "result": "Started", "pattern": "\\[Win32App\\] (?:Downloading app on session \\d{1,4}\\. App: |Content cache miss for app \\(id = )(?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" },
+    { "id": "download-done-report", "phase": "Download", "result": "Done", "pattern": "Download state for app with id: (?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}).{0,400}?InProgressDownloadCompleted" },
+    { "id": "download-done", "phase": "Download", "result": "Done", "pattern": "\\[Win32App DO\\] DO download and decryption is successfully done" },
+    { "id": "download-failed", "phase": "Download", "result": "Failed", "pattern": "\\[Win32App(?: DO)?\\].{0,200}?\\b(?:download(?:ing)?|DO job)\\b.{0,200}?\\b(?:failed|failure|timed out)\\b" },
+    { "id": "hash-failed", "phase": "Hash", "result": "Failed", "pattern": "\\[Win32App\\].{0,100}?(?:hash|hmac) validation (?:is )?(?:fail|failed|not pass)" },
+    { "id": "hash-done", "phase": "Hash", "result": "Done", "pattern": "\\[Win32App\\] (?:file hash validation pass|hmac validation is pass)" },
+    { "id": "hash-start", "phase": "Hash", "result": "Started", "pattern": "\\[Win32App\\] Starts verifying encrypted hash" },
+    { "id": "unzip-failed", "phase": "Unzip", "result": "Failed", "pattern": "\\[Win32App\\].{0,100}?(?:unzip(?:ping)?|decrypt(?:ion|ing)?)\\b.{0,200}?\\b(?:failed|failure|exception)\\b" },
+    { "id": "unzip-start", "phase": "Unzip", "result": "Started", "pattern": "\\[Win32App\\] (?:Start unzipping|Unzipping file on session)" },
+    { "id": "install-start", "phase": "Install", "result": "Started", "pattern": "\\[Win32App\\]\\[ExecutionActionHandler\\] Handler invoked with execution type: Install for policy with id: (?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" },
+    { "id": "install-process-failed", "phase": "Install", "result": "Failed", "pattern": "\\[Win32App\\] Failed to create installer process\\. Error code = (?<code>-?\\d{1,10})" },
+    { "id": "install-outcome-ok", "phase": "Install", "result": "Done", "pattern": "\\[Win32App\\] [il]pExitCode is defined as (?:Success|SoftReboot|HardReboot)\\b" },
+    { "id": "install-outcome-failed", "phase": "Install", "result": "Failed", "pattern": "\\[Win32App\\] [il]pExitCode is defined as (?:Failed|Retry)\\b" },
+    { "id": "install-exit-unmapped", "phase": "Install", "result": "Failed", "pattern": "Error with [il]pExitCode:? (?<code>-?\\d{1,10}) without mapping" },
+    { "id": "install-exit", "phase": "Install", "result": "Progress", "pattern": "\\[Win32App\\] [il]pExitCode (?:is )?(?<code>-?\\d{1,10})\\b" },
+    { "id": "install-handler-failed", "phase": "Install", "result": "Failed", "pattern": "\\[Win32App\\]\\[ExecutionActionHandler\\] Handler completed with action status: Failed" },
+    { "id": "install-handler-done", "phase": "Install", "result": "Done", "pattern": "\\[Win32App\\]\\[ExecutionActionHandler\\] Handler completed with action status: Success" },
+    { "id": "detection-result", "phase": "Detection", "result": "Result", "pattern": "\\[Win32App\\]\\[DetectionActionHandler\\] Detection for policy with id: (?<app>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}) resulted in action status: \\w{1,20} and detection state: (?<state>NotDetected|Detected)\\b" }
+  ],
+  "checkInFiles": [ "IntuneManagementExtension*.log", "AppWorkload*.log" ],
+  "checkIn": [
+    { "id": "policies-received", "kind": "success", "pattern": "Get policies = \\[" },
+    { "id": "app-checkin-end", "kind": "success", "pattern": "\\[(?<workload>Win32(?:Available)?AppAsync)\\] End app check in" },
+    { "id": "app-checkin-start", "kind": "attempt", "pattern": "\\[(?<workload>Win32(?:Available)?AppAsync)\\] Starting app check in" },
+    { "id": "agent-checkin-throttle", "kind": "success", "pattern": "Successfully updated throttling info\\. workload AgentCheckIn\\b" },
+    { "id": "location-recovered", "kind": "recovered", "pattern": "\\[Location Service\\] Success!!" },
+    { "id": "start-checkin-delay", "kind": "start", "pattern": "Delaying all checkins by seconds = (?<seconds>\\d{1,6}) in the first check ?in on start" },
+    { "id": "start-workload-delay", "kind": "start", "pattern": "Delaying PS and Win32 app workload checkins by seconds = (?<seconds>\\d{1,6}) in the first check ?in on start" },
+    { "id": "endpoint-malformed-url", "kind": "ignored", "pattern": "\\[Location Service\\] Failed to Get Endpoint(?s:.){0,300}?\\burl (?!https?://)(?s:.){0,600}?UriFormatException" },
+    { "id": "token-failed", "kind": "failure", "error": "token", "pattern": "Failed to get AAD token|TokenA(?:c)?quireException" },
+    { "id": "proxy-failed", "kind": "failure", "error": "proxy", "pattern": "\\[Location Service\\] Failed(?s:.){0,600}?(?:proxy|(?<![0-9])407(?![0-9]))" },
+    { "id": "http-failed", "kind": "failure", "error": "", "pattern": "\\[Location Service\\] Failed(?s:.){0,600}?(?:\\bstatus(?: code)?:? ?|\\()(?<code>40[13]|5[0-9]{2})(?![0-9])" },
+    { "id": "network-failed", "kind": "failure", "error": "", "pattern": "\\[Location Service\\] Failed(?s:.){0,600}?WebException status (?<code>[A-Za-z]{2,40})" },
+    { "id": "endpoint-failed", "kind": "failure", "error": "", "pattern": "\\[Location Service\\] Failed to Get Endpoint" }
+  ],
+  "assignmentFiles": [ "AppWorkload*.log", "IntuneManagementExtension*.log", "_IntuneManagementExtension*.log" ],
+  "assignment": [
+    { "id": "assignment-policies", "kind": "policies", "pattern": "Get policies = \\[" },
+    { "id": "assignment-session", "kind": "session", "pattern": "\\[Win32App\\].{0,200}?Processing user session \\d{1,4}, userId: (?<user>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\\b" },
+    { "id": "assignment-required", "kind": "required", "pattern": "\\[Win32App\\] Requesting required apps\\b" },
+    { "id": "assignment-available", "kind": "available", "pattern": "\\[Win32App\\] Requesting available apps only\\b" }
+  ]
+}

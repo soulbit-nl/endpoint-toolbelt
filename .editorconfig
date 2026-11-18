@@ -1,0 +1,23 @@
+# .NET analyzers: Directory.Build.props sets AnalysisLevel 10.0 with AnalysisMode Recommended, and
+# every warning fails the build. The rules turned off here are turned off on purpose.
+root = true
+
+[*.cs]
+# CA1716: IServiceLog.Error clashes with a Visual Basic keyword; the product has no VB callers.
+dotnet_diagnostic.CA1716.severity = none
+# CA1859: fields and returns typed as interfaces are the seams the tests replace.
+dotnet_diagnostic.CA1859.severity = none
+
+[tests/**.cs]
+# Test names read as sentences with underscores.
+dotnet_diagnostic.CA1707.severity = none
+# Inline expected values read better than static fields in assertions.
+dotnet_diagnostic.CA1861.severity = none
+# Test fixtures are sealed in practice and own no unmanaged state.
+dotnet_diagnostic.CA1816.severity = none
+# Tests run on fixed, culture-free inputs.
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1310.severity = none
+# Test helpers wait on purpose without a cancellation token.
+dotnet_diagnostic.CA2016.severity = none
+dotnet_diagnostic.CA1826.severity = none

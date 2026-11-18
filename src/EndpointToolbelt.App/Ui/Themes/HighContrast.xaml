@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- High contrast: only system colours. The theme is reloaded when the user changes it. -->
+    <SolidColorBrush x:Key="WindowBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="SurfaceBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="ListBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="TextPrimary" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TextMuted" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="AccentBackground" Color="{x:Static SystemColors.HighlightColor}" />
+    <SolidColorBrush x:Key="AccentHover" Color="{x:Static SystemColors.HighlightColor}" />
+    <SolidColorBrush x:Key="AccentText" Color="{x:Static SystemColors.HighlightTextColor}" />
+    <SolidColorBrush x:Key="LinkText" Color="{x:Static SystemColors.HotTrackColor}" />
+    <SolidColorBrush x:Key="DangerBackground" Color="{x:Static SystemColors.HighlightColor}" />
+    <SolidColorBrush x:Key="DangerHover" Color="{x:Static SystemColors.HighlightColor}" />
+    <SolidColorBrush x:Key="DangerText" Color="{x:Static SystemColors.HighlightTextColor}" />
+    <SolidColorBrush x:Key="ToneSuccess" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="ToneWarning" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="ToneError" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="ToneInfo" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="ToneChange" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="ToneNeutral" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="LogBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="BannerBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="FocusBrush" Color="{x:Static SystemColors.HighlightColor}" />
+    <!-- Disabled buttons: the system's disabled text colour, not dimmed (dimming is not a high contrast colour). -->
+    <sys:Double x:Key="DisabledOpacity">1</sys:Double>
+    <SolidColorBrush x:Key="PrimaryDisabledBackground" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="PrimaryDisabledText" Color="{x:Static SystemColors.GrayTextColor}" />
+    <SolidColorBrush x:Key="PrimaryDisabledBorder" Color="{x:Static SystemColors.GrayTextColor}" />
+    <SolidColorBrush x:Key="DisabledText" Color="{x:Static SystemColors.GrayTextColor}" />
+    <SolidColorBrush x:Key="DisabledBorder" Color="{x:Static SystemColors.GrayTextColor}" />
+    <!-- The helper character is hidden in high contrast; system colours in case it is drawn at all. -->
+    <SolidColorBrush x:Key="HelperBody" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="HelperEye" Color="{x:Static SystemColors.WindowColor}" />
+    <SolidColorBrush x:Key="HelperBit" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="HelperSoft" Color="{x:Static SystemColors.GrayTextColor}" />
+    <SolidColorBrush x:Key="HelperMark" Color="{x:Static SystemColors.WindowColor}" />
+</ResourceDictionary>

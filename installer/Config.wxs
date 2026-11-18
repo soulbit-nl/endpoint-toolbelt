@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuration values (README, "Configuration"), written to HKLM\SOFTWARE\EndpointToolbelt\Config
+  as REG_SZ at install and upgrade.
+
+  The remember-property pattern, per value: before AppSearch a value given on the command line
+  is saved (SaveCmdLine_*); AppSearch then finds the value already stored; after AppSearch the
+  saved command-line value is put back (RestoreCmdLine_*). So a value on the command line wins,
+  and otherwise the stored value survives an upgrade (the old product removes its values first).
+  A value is written only when its property has one.
+
+  The properties are deliberately not Secure: when a standard user starts a repair of this
+  per-machine product, Windows Installer does not pass public properties that are not Secure to
+  the elevated part, so new values cannot be set that way; an administrator or SYSTEM (Intune)
+  can pass any of them.
+
+  Keep the entries identical apart from the names.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <ComponentGroup Id="Configuration" Directory="InstallFolder">
+      <Component Id="Config_FullResetCooldownHours" Condition="FULLRESETCOOLDOWNHOURS" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="FullResetCooldownHours" Type="string" Value="[FULLRESETCOOLDOWNHOURS]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_WURepairCooldownHours" Condition="WUREPAIRCOOLDOWNHOURS" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WURepairCooldownHours" Type="string" Value="[WUREPAIRCOOLDOWNHOURS]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_WUDeploymentDelayDays" Condition="WUDEPLOYMENTDELAYDAYS" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WUDeploymentDelayDays" Type="string" Value="[WUDEPLOYMENTDELAYDAYS]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_WUMinFreeGB" Condition="WUMINFREEGB" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WUMinFreeGB" Type="string" Value="[WUMINFREEGB]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_WURemoveStalePackages" Condition="WUREMOVESTALEPACKAGES" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WURemoveStalePackages" Type="string" Value="[WUREMOVESTALEPACKAGES]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_SupportText" Condition="SUPPORTTEXT" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="SupportText" Type="string" Value="[SUPPORTTEXT]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_SupportUrl" Condition="SUPPORTURL" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="SupportUrl" Type="string" Value="[SUPPORTURL]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_UserRateLimitPerHour" Condition="USERRATELIMIT" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="UserRateLimitPerHour" Type="string" Value="[USERRATELIMIT]" KeyPath="yes" />
+      </Component>
+      <Component Id="Config_AllowMachineWideOnMultiSession" Condition="ALLOWMULTISESSIONRESET" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="AllowMachineWideOnMultiSession" Type="string" Value="[ALLOWMULTISESSIONRESET]" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Property Id="FULLRESETCOOLDOWNHOURS">
+      <RegistrySearch Id="Find_FullResetCooldownHours" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="FullResetCooldownHours" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_FullResetCooldownHours" Id="SavedFullResetCooldownHours" Value="[FULLRESETCOOLDOWNHOURS]" Before="AppSearch" Sequence="first" Condition="FULLRESETCOOLDOWNHOURS" />
+    <SetProperty Action="RestoreCmdLine_FullResetCooldownHours" Id="FULLRESETCOOLDOWNHOURS" Value="[SavedFullResetCooldownHours]" After="AppSearch" Sequence="first" Condition="SavedFullResetCooldownHours" />
+
+    <Property Id="WUREPAIRCOOLDOWNHOURS">
+      <RegistrySearch Id="Find_WURepairCooldownHours" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WURepairCooldownHours" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_WURepairCooldownHours" Id="SavedWURepairCooldownHours" Value="[WUREPAIRCOOLDOWNHOURS]" Before="AppSearch" Sequence="first" Condition="WUREPAIRCOOLDOWNHOURS" />
+    <SetProperty Action="RestoreCmdLine_WURepairCooldownHours" Id="WUREPAIRCOOLDOWNHOURS" Value="[SavedWURepairCooldownHours]" After="AppSearch" Sequence="first" Condition="SavedWURepairCooldownHours" />
+
+    <Property Id="WUDEPLOYMENTDELAYDAYS">
+      <RegistrySearch Id="Find_WUDeploymentDelayDays" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WUDeploymentDelayDays" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_WUDeploymentDelayDays" Id="SavedWUDeploymentDelayDays" Value="[WUDEPLOYMENTDELAYDAYS]" Before="AppSearch" Sequence="first" Condition="WUDEPLOYMENTDELAYDAYS" />
+    <SetProperty Action="RestoreCmdLine_WUDeploymentDelayDays" Id="WUDEPLOYMENTDELAYDAYS" Value="[SavedWUDeploymentDelayDays]" After="AppSearch" Sequence="first" Condition="SavedWUDeploymentDelayDays" />
+
+    <Property Id="WUMINFREEGB">
+      <RegistrySearch Id="Find_WUMinFreeGB" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WUMinFreeGB" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_WUMinFreeGB" Id="SavedWUMinFreeGB" Value="[WUMINFREEGB]" Before="AppSearch" Sequence="first" Condition="WUMINFREEGB" />
+    <SetProperty Action="RestoreCmdLine_WUMinFreeGB" Id="WUMINFREEGB" Value="[SavedWUMinFreeGB]" After="AppSearch" Sequence="first" Condition="SavedWUMinFreeGB" />
+
+    <Property Id="WUREMOVESTALEPACKAGES">
+      <RegistrySearch Id="Find_WURemoveStalePackages" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="WURemoveStalePackages" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_WURemoveStalePackages" Id="SavedWURemoveStalePackages" Value="[WUREMOVESTALEPACKAGES]" Before="AppSearch" Sequence="first" Condition="WUREMOVESTALEPACKAGES" />
+    <SetProperty Action="RestoreCmdLine_WURemoveStalePackages" Id="WUREMOVESTALEPACKAGES" Value="[SavedWURemoveStalePackages]" After="AppSearch" Sequence="first" Condition="SavedWURemoveStalePackages" />
+
+    <Property Id="SUPPORTTEXT">
+      <RegistrySearch Id="Find_SupportText" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="SupportText" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_SupportText" Id="SavedSupportText" Value="[SUPPORTTEXT]" Before="AppSearch" Sequence="first" Condition="SUPPORTTEXT" />
+    <SetProperty Action="RestoreCmdLine_SupportText" Id="SUPPORTTEXT" Value="[SavedSupportText]" After="AppSearch" Sequence="first" Condition="SavedSupportText" />
+
+    <Property Id="SUPPORTURL">
+      <RegistrySearch Id="Find_SupportUrl" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="SupportUrl" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_SupportUrl" Id="SavedSupportUrl" Value="[SUPPORTURL]" Before="AppSearch" Sequence="first" Condition="SUPPORTURL" />
+    <SetProperty Action="RestoreCmdLine_SupportUrl" Id="SUPPORTURL" Value="[SavedSupportUrl]" After="AppSearch" Sequence="first" Condition="SavedSupportUrl" />
+
+    <Property Id="USERRATELIMIT">
+      <RegistrySearch Id="Find_UserRateLimitPerHour" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="UserRateLimitPerHour" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_UserRateLimitPerHour" Id="SavedUserRateLimitPerHour" Value="[USERRATELIMIT]" Before="AppSearch" Sequence="first" Condition="USERRATELIMIT" />
+    <SetProperty Action="RestoreCmdLine_UserRateLimitPerHour" Id="USERRATELIMIT" Value="[SavedUserRateLimitPerHour]" After="AppSearch" Sequence="first" Condition="SavedUserRateLimitPerHour" />
+
+    <Property Id="ALLOWMULTISESSIONRESET">
+      <RegistrySearch Id="Find_AllowMachineWideOnMultiSession" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="AllowMachineWideOnMultiSession" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_AllowMachineWideOnMultiSession" Id="SavedAllowMachineWideOnMultiSession" Value="[ALLOWMULTISESSIONRESET]" Before="AppSearch" Sequence="first" Condition="ALLOWMULTISESSIONRESET" />
+    <SetProperty Action="RestoreCmdLine_AllowMachineWideOnMultiSession" Id="ALLOWMULTISESSIONRESET" Value="[SavedAllowMachineWideOnMultiSession]" After="AppSearch" Sequence="first" Condition="SavedAllowMachineWideOnMultiSession" />
+
+  </Fragment>
+</Wix>

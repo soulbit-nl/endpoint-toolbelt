@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>EndpointToolbelt.Service</RootNamespace>
+    <AssemblyName>EndpointToolbelt.Service</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EndpointToolbelt.Contracts\EndpointToolbelt.Contracts.csproj" />
+    <ProjectReference Include="..\EndpointToolbelt.Platform\EndpointToolbelt.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EndpointToolbelt.Tests" />
+  </ItemGroup>
+
+</Project>

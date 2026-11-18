@@ -1,0 +1,45 @@
+# CodeQL code scanning for the C# code and the workflows. Free on a public repository; on a
+# private repository it needs GitHub Advanced Security, so there it runs only when the
+# repository variable CODEQL_ENABLED is 'true' (set by the repository owner). The analysis
+# needs no build (build-mode none), so it costs no Windows runner minutes.
+
+name: codeql
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
+  schedule:
+    - cron: '41 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    if: vars.CODEQL_ENABLED == 'true' || !github.event.repository.private
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [csharp, actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.language }}

@@ -1,0 +1,517 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- A visible keyboard focus outline on every control. -->
+    <Style x:Key="FocusOutline">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="-3" StrokeThickness="2" Stroke="{DynamicResource FocusBrush}" RadiusX="3" RadiusY="3" SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One visual language for every page. The shared values live here, never per page: the
+         readable column, the mascot's size, one corner radius for cards and rows and a smaller one for
+         buttons and badges, one spacing scale (4, 8, 12, 16, 24) and four text sizes (page title 18,
+         section title 13, body 13, small 12). Light, dark and high contrast differ only in colours. -->
+    <sys:Double x:Key="ContentMaxWidth">900</sys:Double>
+    <sys:Double x:Key="MascotSize">48</sys:Double>
+    <CornerRadius x:Key="CardRadius">8</CornerRadius>
+    <CornerRadius x:Key="ControlRadius">4</CornerRadius>
+    <sys:Double x:Key="SpaceXS">4</sys:Double>
+    <sys:Double x:Key="SpaceS">8</sys:Double>
+    <sys:Double x:Key="SpaceM">12</sys:Double>
+    <sys:Double x:Key="SpaceL">16</sys:Double>
+    <sys:Double x:Key="SpaceXL">24</sys:Double>
+    <!-- The page column's margins, a card's padding, the gap above a section, and the room a page's
+         first line leaves for the mascot at the top right of the column (its size plus SpaceM). -->
+    <Thickness x:Key="PageMargin">24,12,24,0</Thickness>
+    <Thickness x:Key="CardPadding">14,8,14,8</Thickness>
+    <Thickness x:Key="SectionGap">0,12,0,0</Thickness>
+    <Thickness x:Key="BesideMascot">0,0,60,0</Thickness>
+    <sys:Double x:Key="PageTitleSize">18</sys:Double>
+    <sys:Double x:Key="SectionTitleSize">13</sys:Double>
+    <sys:Double x:Key="SmallTextSize">12</sys:Double>
+
+    <!-- A page's title (Home's status, Choose a problem, a problem's name, For IT support) and its one line. -->
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource PageTitleSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="PageSubtitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SmallTextSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <!-- A section's title, in sentence case on every page ("Device health", "Something not working?",
+         "Tools for this", "Recent runs"); it replaces the small capitals of the earlier headings. -->
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="SectionHeading" TargetType="TextBlock" BasedOn="{StaticResource SectionTitle}">
+        <Setter Property="Margin" Value="0,12,0,6" />
+    </Style>
+
+    <!-- A fact's label on a tool's detail page (Typical time, Closes or changes). -->
+    <Style x:Key="FactLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SmallTextSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- A card on every page (the device health, a path's checks, an app's or a tool's detail). -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CardRadius}" />
+        <Setter Property="Padding" Value="{StaticResource CardPadding}" />
+    </Style>
+
+    <!-- A stroke icon in a 24 x 24 box (problem and category tiles). Decorative: a Path has no automation peer. -->
+    <Style x:Key="StrokeIcon" TargetType="Path">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Stroke" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="StrokeThickness" Value="1.7" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <GeometryGroup x:Key="IconAppInstall">
+        <RectangleGeometry Rect="3,3,18,18" RadiusX="3" RadiusY="3" />
+        <PathGeometry Figures="M12,7 V15 M8.5,11.5 L12,15 L15.5,11.5" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconPerson">
+        <EllipseGeometry Center="12,8" RadiusX="4" RadiusY="4" />
+        <PathGeometry Figures="M4,21 C5.5,17 8.5,15 12,15 C15.5,15 18.5,17 20,21" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconUpdate">
+        <PathGeometry Figures="M20,12 A8,8 0 1 1 17.7,6.3 M20,4 V9 H15" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconConnect">
+        <PathGeometry Figures="M2,9 A15,15 0 0 1 22,9 M5.5,12.5 A10,10 0 0 1 18.5,12.5 M9,16 A5,5 0 0 1 15,16" />
+        <EllipseGeometry Center="12,19.5" RadiusX="1" RadiusY="1" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconApps">
+        <RectangleGeometry Rect="3,3,7,7" RadiusX="1.5" RadiusY="1.5" />
+        <RectangleGeometry Rect="14,3,7,7" RadiusX="1.5" RadiusY="1.5" />
+        <RectangleGeometry Rect="3,14,7,7" RadiusX="1.5" RadiusY="1.5" />
+        <RectangleGeometry Rect="14,14,7,7" RadiusX="1.5" RadiusY="1.5" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconShield">
+        <PathGeometry Figures="M12,3 L20,6 V12 C20,16.5 16.6,20 12,21 C7.4,20 4,16.5 4,12 V6 Z M9,12 L11,14 L15,10" />
+    </GeometryGroup>
+    <!-- The icons of the problem rows that had none (an Office document, OneDrive's cloud, a monitor). -->
+    <GeometryGroup x:Key="IconDocument">
+        <PathGeometry Figures="M6,3 H14 L19,8 V21 H6 Z M14,3 V8 H19 M9,12 H16 M9,16 H16" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconCloud">
+        <PathGeometry Figures="M7,18 H17.5 A3.5,3.5 0 0 0 17.5,11 A5.5,5.5 0 0 0 7,10 A4,4 0 0 0 7,18 Z" />
+    </GeometryGroup>
+    <GeometryGroup x:Key="IconWindow">
+        <RectangleGeometry Rect="3,4,18,13" RadiusX="2" RadiusY="2" />
+        <PathGeometry Figures="M9,21 H15 M12,17 V21" />
+    </GeometryGroup>
+    <!-- "My problem is not listed": a question mark in a circle. -->
+    <GeometryGroup x:Key="IconQuestion">
+        <EllipseGeometry Center="12,12" RadiusX="9" RadiusY="9" />
+        <PathGeometry Figures="M9.5,9.5 C9.5,8 10.6,7 12,7 C13.4,7 14.5,8 14.5,9.4 C14.5,11.2 12,11.5 12,13.8 M12,16.6 V17.2" />
+    </GeometryGroup>
+
+
+    <!-- One primary style (dark, at most one on a page), one secondary style (outlined) and one link
+         style; every other button style below only sizes or outlines one of these. -->
+    <Style x:Key="BaseButton" TargetType="Button">
+        <Setter Property="FontSize" Value="13" />
+        <!-- About 40 px, a touch target. -->
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusOutline}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource ControlRadius}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="{DynamicResource DisabledOpacity}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Background" Value="{DynamicResource AccentBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AccentHover}" />
+            </Trigger>
+            <!-- In high contrast the system's disabled text colour, not a lighter fill. -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource PrimaryDisabledBackground}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryDisabledText}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryDisabledBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource DisabledText}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource DisabledBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- An action that changes a lot (Full IME reset, Repair Windows Update): a secondary button with
+         a red outline, so it stands out without shouting. The confirmation says the rest. -->
+    <Style x:Key="DangerOutlineButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBackground}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource DangerHover}" />
+            </Trigger>
+            <!-- A button that cannot be used does not call attention to itself. -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="BorderBrush" Value="{DynamicResource DisabledBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- The three tabs of the window (Home, Choose a problem, For IT support), always in a row at
+         the top. The one shown has Tag "Selected": its text in the primary colour with a bar below it
+         (never a dark fill: the page's one dark button is its primary action), and its automation item
+         status says so. The others have muted text. -->
+    <Style x:Key="NavButton" TargetType="Button">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="0,0,0,3" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            </Trigger>
+            <Trigger Property="Tag" Value="Selected">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- A choice in a list (a problem, an app, a tool, a window, an adapter): the whole row is one
+         outlined button with the card's corner radius, its text on the left. -->
+    <Style x:Key="ChoiceButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CardRadius}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="{DynamicResource DisabledOpacity}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Tag" Value="Selected">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- A tile (a tool group in For IT support): an icon, its name and a line. -->
+    <Style x:Key="TileButton" TargetType="Button" BasedOn="{StaticResource ChoiceButton}">
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="48" />
+    </Style>
+
+    <!-- Home's problem rows: the same card as every row, sized for Home: a short label on one line
+         (the full title is the row's name and tooltip), so Home in its worst real state (a problem, the health
+         count, a two-line support contact) fits 540 x 640 at 100, 125 and 150 %. -->
+    <Style x:Key="HomeTileButton" TargetType="Button" BasedOn="{StaticResource TileButton}">
+        <Setter Property="Padding" Value="12,3" />
+        <Setter Property="Margin" Value="0,0,8,4" />
+        <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style x:Key="HomeTileLabel" TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- One problem row (Choose a problem): an icon, a title and a one-line subtitle; every row the same. -->
+    <Style x:Key="ProblemRowButton" TargetType="Button" BasedOn="{StaticResource TileButton}">
+        <Setter Property="Margin" Value="0,0,8,4" />
+        <Setter Property="Padding" Value="12,2" />
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style x:Key="ProblemSubtitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SmallTextSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- A secondary button sized for Close: reachable and labelled, but not competing with the actions. -->
+    <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinWidth" Value="80" />
+        <Setter Property="Padding" Value="12,3" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+    <!-- A slim scroll bar in the theme's colours (the system one stays light in the dark theme). -->
+    <Style x:Key="ScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{DynamicResource TextMuted}" CornerRadius="3" Opacity="0.6" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="MinWidth" Value="10" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollThumb}" Margin="2,0" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="10" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="{TemplateBinding Background}">
+                                <Track x:Name="PART_Track">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageLeftCommand" Opacity="0" Focusable="False" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource ScrollThumb}" Margin="0,2" />
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageRightCommand" Opacity="0" Focusable="False" />
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- An expander in the theme's colours: an arrow and the header as one toggle button. -->
+    <Style x:Key="ExpanderToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="Transparent" Padding="0,4">
+                        <StackPanel Orientation="Horizontal">
+                            <Path x:Name="Arrow" Data="M 0 0 L 4 4 L 0 8 Z" Fill="{DynamicResource TextMuted}" Width="8" Height="8"
+                                  VerticalAlignment="Center" Margin="0,0,8,0" RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </Path.RenderTransform>
+                            </Path>
+                            <ContentPresenter RecognizesAccessKey="True" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Arrow" Property="RenderTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="90" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="PlainExpander" TargetType="Expander">
+        <!-- Only the header toggle is a tab stop (with the visible focus outline). -->
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <DockPanel>
+                        <ToggleButton x:Name="Toggle" DockPanel.Dock="Top" Style="{StaticResource ExpanderToggle}" FontSize="12" FontWeight="SemiBold"
+                                      AutomationProperties.ItemStatus="Collapsed"
+                                      Content="{TemplateBinding Header}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <ContentPresenter x:Name="Body" Visibility="Collapsed" />
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Toggle" Property="AutomationProperties.ItemStatus" Value="Expanded" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- A tool row: its name. -->
+    <Style x:Key="ToolName" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="ToolLine" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SmallTextSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <!-- The button column of a tool's row: the button's 180 plus its 8 margin, the same in every list
+         and group; UniformLayoutAndMascotTests measures every label against it. -->
+    <GridLength x:Key="ToolRunColumnWidth">188</GridLength>
+    <!-- The Run (or Open) button on a tool's row (For IT support and the problem paths): a secondary
+         button; the two heavy tools keep their red outline. -->
+    <Style x:Key="RunButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="MinWidth" Value="72" />
+    </Style>
+    <Style x:Key="DangerRunButton" TargetType="Button" BasedOn="{StaticResource DangerOutlineButton}">
+        <Setter Property="MinWidth" Value="72" />
+    </Style>
+    <!-- The Run (or Open) button on a tool's detail page is the page's one primary button (dark);
+         the two heavy tools add a red outline around it. -->
+    <Style x:Key="PrimaryRunButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="MinWidth" Value="96" />
+    </Style>
+    <Style x:Key="DangerPrimaryRunButton" TargetType="Button" BasedOn="{StaticResource PrimaryRunButton}">
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBackground}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource DangerHover}" />
+            </Trigger>
+            <!-- A button that cannot be used does not call attention to itself. -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryDisabledBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- The organization's support link (a Hyperlink, it opens a web page) looks like the link buttons
+         beside it: underlined only while pointed at. -->
+    <Style x:Key="QuietHyperlink" TargetType="Hyperlink">
+        <Setter Property="TextDecorations" Value="{x:Null}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="TextDecorations" Value="Underline" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- The one link style: secondary actions that are words, not buttons ("Show all", "Why?", "About"). -->
+    <Style x:Key="LinkButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource LinkText}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FontSize" Value="{StaticResource SmallTextSize}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <TextBlock x:Name="Text" Background="Transparent">
+                        <ContentPresenter RecognizesAccessKey="True" />
+                    </TextBlock>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Text" Property="TextDecorations" Value="Underline" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Text" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

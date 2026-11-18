@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EndpointToolbelt.App/EndpointToolbelt.App.csproj" />
+    <Project Path="src/EndpointToolbelt.Contracts/EndpointToolbelt.Contracts.csproj" />
+    <Project Path="src/EndpointToolbelt.Engine/EndpointToolbelt.Engine.csproj" />
+    <Project Path="src/EndpointToolbelt.Platform/EndpointToolbelt.Platform.csproj" />
+    <Project Path="src/EndpointToolbelt.Service/EndpointToolbelt.Service.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EndpointToolbelt.Engine.TestHost/EndpointToolbelt.Engine.TestHost.csproj" />
+    <Project Path="tests/EndpointToolbelt.Tests/EndpointToolbelt.Tests.csproj" />
+  </Folder>
+</Solution>

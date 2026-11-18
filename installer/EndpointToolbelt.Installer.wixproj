@@ -1,0 +1,38 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!--
+    Per-machine x64 MSI, built by build\build.ps1 from the staged Release binaries and engine data:
+      dotnet build installer\EndpointToolbelt.Installer.wixproj -p:ProductVersion=... -p:BinDir=... -p:EngineDir=...
+    WiX 5.0.2 (MS-RL) with core elements only: no extension, so the MSI holds no WiX
+    runtime code.
+  -->
+  <PropertyGroup>
+    <OutputName>EndpointToolbelt</OutputName>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      WIX1149: the Windows Installer SDK documents MsiServiceConfig and
+      MsiServiceConfigFailureActions as "not working as expected". The Windows Sandbox test
+      checks delayed start and the recovery actions on
+      the installed service, so the core elements are kept (no extension custom actions).
+    -->
+    <SuppressSpecificWarnings>1149</SuppressSpecificWarnings>
+    <!--
+      ICE43 and ICE57 assume the Programs folder can be per-user and ask for an HKCU key path for
+      a component with a shortcut. This package is per-machine only (Scope="perMachine" sets
+      ALLUSERS=1), so the shortcut always goes to the all-users Programs folder and the app
+      executable is the right key path.
+      ICE61 warns that the upgrade range includes the package's own version: that is on purpose
+      (MajorUpgrade AllowSameVersionUpgrades), so a newer build of the same version replaces
+      the installed one instead of installing beside it. Every other ICE runs.
+    -->
+    <SuppressIces>ICE43;ICE57;ICE61</SuppressIces>
+    <DefineConstants>ProductVersion=$(ProductVersion);BinDir=$(BinDir);EngineDir=$(EngineDir);AssetsDir=$(MSBuildThisFileDirectory)..\src\EndpointToolbelt.App\Assets</DefineConstants>
+  </PropertyGroup>
+
+  <Target Name="CheckInputs" BeforeTargets="Build">
+    <Error Condition="'$(ProductVersion)' == ''" Text="ProductVersion is required (build\build.ps1 passes it from Directory.Build.props)." />
+    <Error Condition="'$(BinDir)' == '' or !Exists('$(BinDir)\EndpointToolbelt.Service.exe')" Text="BinDir must name the staged binaries (artifacts\staging\bin)." />
+    <Error Condition="'$(EngineDir)' == '' or !Exists('$(EngineDir)\ImeLogPatterns.json')" Text="EngineDir must name the staged engine data (artifacts\staging\Engine)." />
+  </Target>
+</Project>

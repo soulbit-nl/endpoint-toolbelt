@@ -1,0 +1,283 @@
+# Build, test and package Endpoint Toolbelt.
+#
+# Runs on pull requests and on version tags (v*). A pull request builds, tests and attaches the
+# unsigned MSI as a workflow artifact. A v* tag also signs the tested binaries and then the MSI
+# built from them with SoulBit's Artifact Signing certificate profile, verifies every signature,
+# and publishes a GitHub release with the signed MSI and its SHA-256. Only the sign job can sign:
+# it runs in the environment `release`, which only v* tags may use, and logs in to Azure over
+# OpenID Connect (no secret). Actions are pinned to full commit SHAs (Dependabot updates them).
+# Every job runs on GitHub-hosted runners.
+
+name: build
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # A change to documentation only needs no Windows build.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test, MSI (Windows)
+    # Draft pull requests are not built: mark the pull request ready to build it.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Build, test, coverage, MSI (with ICE validation and the no-script check)
+        shell: pwsh
+        run: ./build/build.ps1 -Coverage
+
+      # Pull requests only: a tag publishes the signed MSI from the sign job, never this unsigned one.
+      # Not for a pull request from a fork: an MSI built from outside code is no artifact of this repository.
+      - name: Upload the MSI
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: msi
+          path: |
+            artifacts/EndpointToolbelt-*-x64.msi
+            artifacts/EndpointToolbelt-*-x64.msi.sha256
+          if-no-files-found: error
+
+      # A tag: the tested binaries go to the sign job, which signs them and builds the MSI from them.
+      - name: Upload the staged binaries (v* tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: staging
+          path: artifacts/staging/
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: artifacts/coverage/
+          if-no-files-found: ignore
+
+  semgrep:
+    name: Semgrep (community rules)
+    # Semgrep CE does not run natively on Windows.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The runner's own Python (3.14) breaks Semgrep's protobuf import; pin a supported one.
+      # Semgrep's OpenTelemetry dependency still imports pkg_resources, which setuptools 81 drops.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Semgrep
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep"
+          export PATH="$RUNNER_TEMP/semgrep/bin:$PATH"
+          python -m pip install --quiet --require-hashes -r build/semgrep-requirements.txt
+          semgrep scan --error --metrics=off \
+            --config p/csharp --config p/secrets --config p/github-actions
+
+  sign:
+    name: Sign (v* tags only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, semgrep]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # Only v* tags may use this environment, and only it can obtain the signing identity.
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    # The signed MSI's product code, for the release notes (an Intune MSI detection rule needs it).
+    outputs:
+      productcode: ${{ steps.verify.outputs.productcode }}
+    env:
+      SIGN_ENDPOINT: https://weu.codesigning.azure.net/
+      SIGN_ACCOUNT: sign-soulbit-platform
+      SIGN_PROFILE: soulbit-public-trust
+      SIGN_TIMESTAMP: http://timestamp.acs.microsoft.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: staging
+          path: artifacts/staging
+
+      # Checked before anything is signed: the tag names the built version and its notes exist.
+      - name: The tag matches the version, and its release notes exist
+        shell: pwsh
+        run: |
+          [xml] $props = Get-Content -Raw Directory.Build.props
+          $version = $props.SelectSingleNode('/Project/PropertyGroup/Version').InnerText.Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "The tag $env:GITHUB_REF_NAME does not match Version $version in Directory.Build.props." }
+          if (-not (Test-Path -LiteralPath "docs/releases/$version.md" -PathType Leaf)) { throw "No release notes at docs/releases/$version.md." }
+
+      - name: Azure login (OpenID Connect, no secret)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign the executables and assemblies
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ env.SIGN_ENDPOINT }}
+          signing-account-name: ${{ env.SIGN_ACCOUNT }}
+          certificate-profile-name: ${{ env.SIGN_PROFILE }}
+          files-folder: ${{ github.workspace }}\artifacts\staging\bin
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: ${{ env.SIGN_TIMESTAMP }}
+          timestamp-digest: SHA256
+          description: Endpoint Toolbelt
+          description-url: ${{ github.server_url }}/${{ github.repository }}
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+          # Fetch the signing tools fresh: a cache another workflow wrote must never run in this job.
+          cache-dependencies: false
+
+      - name: Verify the signatures of the executables and assemblies
+        shell: pwsh
+        run: ./build/Test-Signature.ps1 -Path (Get-ChildItem artifacts/staging/bin -File | Where-Object Extension -in '.exe', '.dll').FullName
+
+      - name: Build the MSI from the signed binaries
+        shell: pwsh
+        run: ./build/build.ps1 -PackageOnly
+
+      - name: Sign the MSI
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ env.SIGN_ENDPOINT }}
+          signing-account-name: ${{ env.SIGN_ACCOUNT }}
+          certificate-profile-name: ${{ env.SIGN_PROFILE }}
+          files-folder: ${{ github.workspace }}\artifacts
+          files-folder-filter: msi
+          file-digest: SHA256
+          timestamp-rfc3161: ${{ env.SIGN_TIMESTAMP }}
+          timestamp-digest: SHA256
+          description: Endpoint Toolbelt
+          description-url: ${{ github.server_url }}/${{ github.repository }}
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+          # Fetch the signing tools fresh: a cache another workflow wrote must never run in this job.
+          cache-dependencies: false
+
+      - name: Verify the MSI and the files in it, write its SHA-256 and read its product code
+        id: verify
+        shell: pwsh
+        run: |
+          $msi = @(Get-ChildItem artifacts -File -Filter 'EndpointToolbelt-*-x64.msi')
+          if ($msi.Count -ne 1) { throw "Expected one MSI, found $($msi.Count)." }
+          ./build/Test-Signature.ps1 -Path $msi[0].FullName -MsiContents
+          $hash = (Get-FileHash -LiteralPath $msi[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          [System.IO.File]::WriteAllText("$($msi[0].FullName).sha256", ("{0}  {1}`n" -f $hash, $msi[0].Name), [System.Text.Encoding]::ASCII)
+          $code = ./build/Get-MsiProductCode.ps1 -Path $msi[0].FullName
+          "productcode=$code" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Upload the signed MSI
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: msi-signed
+          path: |
+            artifacts/EndpointToolbelt-*-x64.msi
+            artifacts/EndpointToolbelt-*-x64.msi.sha256
+          if-no-files-found: error
+
+  release:
+    name: Release (v* tags only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [sign]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # The release notes come from docs/releases/<version>.md at the tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: docs/releases
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: msi-signed
+          path: msi
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRODUCT_CODE: ${{ needs.sign.outputs.productcode }}
+        run: |
+          notes="docs/releases/${TAG#v}.md"
+          if [ ! -f "$notes" ]; then echo "No release notes at $notes." >&2; exit 1; fi
+          # The product code of this build, for the uninstall command and the MSI detection rule.
+          if ! printf '%s' "$PRODUCT_CODE" | grep -Eq '^\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}$'; then
+            echo "No valid product code from the sign job: '$PRODUCT_CODE'." >&2; exit 1
+          fi
+          body="$RUNNER_TEMP/release-notes.md"
+          { cat "$notes"; printf '\n## Product code\n\n`%s`\n\nFor the uninstall command (`msiexec /x %s /qn`) and the MSI detection rule in Intune. Every version has its own.\n' "$PRODUCT_CODE" "$PRODUCT_CODE"; } > "$body"
+          # A draft first, the files on it, then published once: an immutable release takes no files
+          # after it is published, so a published release without its MSI could not be repaired.
+          # A re-run (after a failed upload or publish) reuses the draft it left; a published
+          # release for the tag stops the job. Only "release not found" leads to a new draft: any
+          # other failure of the lookup (network, rate limit, rights) stops the job.
+          if draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>"$RUNNER_TEMP/view.err"); then
+            if [ "$draft" != "true" ]; then echo "The release $TAG is already published." >&2; exit 1; fi
+            echo "Reusing the draft release of $TAG."
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Endpoint Toolbelt ${TAG#v}" --notes-file "$body"
+          elif grep -q 'release not found' "$RUNNER_TEMP/view.err"; then
+            gh release create "$TAG" --draft --verify-tag --repo "$GITHUB_REPOSITORY" --title "Endpoint Toolbelt ${TAG#v}" --notes-file "$body"
+          else
+            cat "$RUNNER_TEMP/view.err" >&2; exit 1
+          fi
+          gh release upload "$TAG" msi/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

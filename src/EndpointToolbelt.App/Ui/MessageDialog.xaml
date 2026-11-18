@@ -1,0 +1,33 @@
+<Window x:Class="EndpointToolbelt.App.Ui.MessageDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextPrimary}"
+        FontFamily="Segoe UI" FontSize="13">
+    <DockPanel Margin="20">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="ConfirmButton" Style="{StaticResource PrimaryButton}" MinWidth="110" IsDefault="True" Click="OnConfirm" />
+                <!-- A second way forward, only in a three-way question (Continue, End Teams for me, Cancel). -->
+                <Button x:Name="AlternateButton" Style="{StaticResource SecondaryButton}" MinWidth="110" Visibility="Collapsed" Click="OnAlternate" Margin="0,0,0,8" />
+                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" MinWidth="110" IsCancel="True" Content="_Cancel" Margin="0,0,0,8" />
+            </StackPanel>
+            <!-- Web links (the About dialog): they open the browser, nothing else. -->
+            <WrapPanel x:Name="LinksPanel" VerticalAlignment="Center" Visibility="Collapsed" />
+        </DockPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel>
+                <TextBlock x:Name="HeadingText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,10" />
+                <TextBlock x:Name="BodyText" TextWrapping="Wrap" />
+                <Border x:Name="WarningBlock" Visibility="Collapsed" Margin="0,14,0,0" Padding="10" Background="{DynamicResource BannerBackground}"
+                        BorderBrush="{DynamicResource ToneWarning}" BorderThickness="1" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="WARNING" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource ToneWarning}" />
+                        <TextBlock x:Name="WarningText" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
