@@ -136,6 +136,40 @@ public class DeviceObservationTests
     }
 
     [Fact]
+    public void A_failed_command_on_an_Office_installation_that_succeeded_is_no_failed_setting()
+    {
+        // The MDM client sends an Office installation again and logs an error, while the Office CSP's
+        // own status of that installation says it succeeded (FinalStatus 70; 60 is failed).
+        (int, int?, IEnumerable<object>) Event(string path) => (2, 4, new object[] { path, -2102722558 });
+        var events = new List<(int Level, int? ProcessId, IEnumerable<object> Values)>
+        {
+            Event("./Vendor/MSFT/Office/Installation/install-one/install"),
+            Event("./Device/Vendor/MSFT/Office/Installation/install-two/install"),
+            Event("./Vendor/MSFT/Office/Installation/install-three"),
+            Event("./Vendor/MSFT/Policy/Config/Defender/AllowRealtimeMonitoring"),
+        };
+        var status = new Dictionary<string, object> { ["install-one"] = 70, ["install-two"] = 60 };
+        object FinalStatus(string id) => status.TryGetValue(id, out var v) ? v : null;
+        var summary = ProfileErrorsProbe.SummarizeTimed(events.Select(e => (e.Item1, e.Item2, e.Item3, (DateTime?)null)), _ => true,
+            succeeded: path => ProfileErrorsProbe.OfficeInstallationSucceeded(path, FinalStatus));
+        Assert.Equal(1, summary.AlreadySucceeded);
+        // A failed installation and one without a status stay failed settings, as does any other setting.
+        Assert.Equal(3, summary.Errors);
+        Assert.Equal(3, summary.Settings.Count);
+        Assert.DoesNotContain(summary.Settings, s => s.Contains("install-one"));
+
+        Assert.Equal("install-one", ProfileErrorsProbe.OfficeInstallationId("./Vendor/MSFT/Office/Installation/install-one/install"));
+        Assert.Null(ProfileErrorsProbe.OfficeInstallationId("./Vendor/MSFT/Office/Installation/..\\other/install"));
+        Assert.Null(ProfileErrorsProbe.OfficeInstallationId("./Vendor/MSFT/Policy/Config/Defender/AllowRealtimeMonitoring"));
+        Assert.True(ProfileErrorsProbe.OfficeInstallationSucceeded("./Vendor/MSFT/Office/Installation/x/install", _ => "70"));
+        Assert.False(ProfileErrorsProbe.OfficeInstallationSucceeded("./Vendor/MSFT/Office/Installation/x/install", _ => 0));
+
+        // The row names it as a user knows it, and the report counts the commands left out.
+        Assert.Equal("Installing Office (Microsoft 365 Apps)", SettingNames.Friendly("Office/Installation/install"));
+        Assert.Contains("1 failed command on an Office installation that succeeded on this device (not counted)", DeviceSettingRows.AlreadySucceededReport(new ProfileErrorsReadout { AlreadySucceeded = 1 }));
+    }
+
+    [Fact]
     public void Not_applicable_settings_make_an_Info_row_with_no_step_and_no_attention()
     {
         var readouts = new DeviceReadouts

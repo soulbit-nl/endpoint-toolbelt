@@ -37,4 +37,11 @@
     <SolidColorBrush x:Key="HelperBit" Color="#A6A6A6" />
     <SolidColorBrush x:Key="HelperSoft" Color="#6E6E6E" />
     <SolidColorBrush x:Key="HelperMark" Color="#1A1A1A" />
+    <!-- The For IT tiles' icons, one colour each (blue, violet, pink, cyan, indigo, orchid): never green, amber or red, which stay for results; each at least 3:1 against SurfaceBackground (a test measures it). -->
+    <SolidColorBrush x:Key="TileIconApps" Color="#6CA8FF" />
+    <SolidColorBrush x:Key="TileIconSignIn" Color="#B39DFF" />
+    <SolidColorBrush x:Key="TileIconMicrosoft365" Color="#F28FC6" />
+    <SolidColorBrush x:Key="TileIconWindows" Color="#5CC8E0" />
+    <SolidColorBrush x:Key="TileIconDefender" Color="#8C9EFF" />
+    <SolidColorBrush x:Key="TileIconNetwork" Color="#D9A6FF" />
 </ResourceDictionary>

@@ -28,8 +28,10 @@ may run, how often and with which confirmation.
   caches, Office in safe mode and bringing back a window that is off the screen.
 - **Hands over to IT support.** "Copy details for IT" gives a ticket text with the evidence; a
   support package collects the logs and the app state in one zip.
-- **Stays local and private.** No server of its own, no telemetry, no device or user names in
-  what it copies; it works without a connection for everything that does not need one.
+- **Stays local and private.** No telemetry and no back end; once a day it reads one small file
+  from the publisher's website to see whether a newer version exists (you can switch that off). No
+  device or user names in what it copies; it works without a connection for everything that does
+  not need one.
 
 ## Install
 

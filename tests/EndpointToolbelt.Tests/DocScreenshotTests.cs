@@ -156,14 +156,11 @@ public class DocScreenshotTests
         Shot(window, Path.Combine(folder, "window-list.png"), SmallWidth, SmallHeight);
     }
 
-    /// <summary>For IT support with the group Windows & security open.</summary>
+    /// <summary>For IT support: the search, the six groups as tiles, the three report buttons and the recent runs.</summary>
     private static void ForIt(string folder)
     {
         var window = Window();
         MainWindowPagesTests.Call(window, "ShowPage", MainWindowPagesTests.PageValue("It"), false);
-        var tiles = (System.Collections.IDictionary)MainWindowPagesTests.Field(window, "_tiles");
-        var tile = tiles.Keys.Cast<Button>().First(b => (ToolGroup)tiles[b] == ToolGroup.WindowsSecurity);
-        MainWindowPagesTests.Call(window, "OnCategoryTile", tile, new RoutedEventArgs());
         Shot(window, Path.Combine(folder, "for-it.png"), SmallWidth, SmallHeight);
     }
 

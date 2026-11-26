@@ -42,6 +42,9 @@ public enum AppButton
     /// <summary>Check Windows Update: the read-only check runs in the service.</summary>
     CheckWu,
 
+    /// <summary>Check Defender blocks: the read-only check runs in the service.</summary>
+    CheckDefender,
+
     /// <summary>Check compliance settings: it reads in the app, as the user; the readouts come from the service's status.</summary>
     Compliance,
 }
@@ -56,7 +59,7 @@ public static class ButtonRules
     /// <summary>The button starts work in the service (the engine), so it needs the service.</summary>
     public static bool NeedsService(AppButton button)
         => button is AppButton.Retry or AppButton.Package or AppButton.ClearCache or AppButton.FullReset or AppButton.RepairWu
-            or AppButton.BackupKey or AppButton.SyncClock or AppButton.UpdateDefender or AppButton.FreeSpace or AppButton.Diagnose or AppButton.RenewIp or AppButton.CheckWu;
+            or AppButton.BackupKey or AppButton.SyncClock or AppButton.UpdateDefender or AppButton.FreeSpace or AppButton.Diagnose or AppButton.RenewIp or AppButton.CheckWu or AppButton.CheckDefender;
 
     /// <param name="button">The button.</param>
     /// <param name="busy">Something runs (or a run is being followed): nothing else may start.</param>

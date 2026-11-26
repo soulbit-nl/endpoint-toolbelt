@@ -256,6 +256,56 @@ public class MainWindowPagesTests
     }
 
     /// <summary>A run log in the history as the app writes it: its header, its result cards, its technical log.</summary>
+    /// <summary>A run log's file name with a start of <paramref name="minutesAgo"/> minutes ago: a tool row and a tile show only a result of the last 24 hours.</summary>
+    [Fact]
+    public void A_problem_path_whose_verdict_says_the_checks_answer_shows_no_answer_line_but_For_IT_does()
+    {
+        OnSta(() =>
+        {
+            var window = NewWindow();
+            RunOutcome Check()
+            {
+                var outcome = new RunOutcome { Action = ToolbeltAction.CheckWindowsUpdate, RunId = "ab12cd34", Result = ResultCode.Completed, ExitCode = 0, StartedUtc = DateTime.UtcNow };
+                outcome.Records.Add(EngineRecord.Parse("{\"type\":\"finding\",\"run\":\"ab12cd34\",\"severity\":\"OK\",\"id\":\"WU-OK\",\"title\":\"Windows Update works\",\"detail\":\"Nothing holds it back.\",\"next\":\"\"}"));
+                outcome.Records.Add(EngineRecord.Parse("{\"type\":\"summary\",\"run\":\"ab12cd34\",\"exit\":0,\"changes\":0,\"restart\":false}"));
+                return outcome;
+            }
+            // On "Windows Update keeps failing" the path's verdict says the check's answer: no second sentence
+            // below the status, which pushed the page into scrolling at the default size.
+            Call(window, "ShowProblem", Problem.WindowsWontUpdate, false);
+            Call(window, "ShowFinal", Check(), false);
+            Assert.Equal(Visibility.Collapsed, Get<TextBlock>(window, "StatusAnswerText").Visibility);
+            // In For IT the answer line stays.
+            Call(window, "ShowPage", PageValue("It"), false);
+            Call(window, "ShowFinal", Check(), false);
+            Assert.Equal(Visibility.Visible, Get<TextBlock>(window, "StatusAnswerText").Visibility);
+            Assert.True(ProblemPaths.VerdictSays(Problem.WindowsWontUpdate, ToolbeltAction.CheckWindowsUpdate));
+            Assert.False(ProblemPaths.VerdictSays(Problem.DeviceBlocked, ToolbeltAction.CheckWindowsUpdate));
+            Assert.False(ProblemPaths.VerdictSays(Problem.WindowsWontUpdate, ToolbeltAction.CheckDefenderBlocks));
+        });
+    }
+
+    [Fact]
+    public void A_check_answer_shows_on_the_page_and_the_details_stay_closed()
+    {
+        OnSta(() =>
+        {
+            var window = NewWindow();
+            Call(window, "ShowAnswer", "Microsoft Defender logged no detection in the last 7 days.");
+            var line = Get<TextBlock>(window, "StatusAnswerText");
+            Assert.Equal(Visibility.Visible, line.Visibility);
+            Assert.Equal("Microsoft Defender logged no detection in the last 7 days.", line.Text);
+            // Not a live region: the status line's name is the same sentence and is announced, so it is heard once.
+            Assert.Equal(AutomationLiveSetting.Off, AutomationProperties.GetLiveSetting(line));
+            Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(Get<TextBlock>(window, "StatusLabel")));
+            // The drawer opens only on View details.
+            Assert.NotEqual(Visibility.Visible, Get<Border>(window, "Drawer").Visibility);
+        });
+    }
+
+    internal static string RecentName(int minutesAgo, string rest)
+        => RunLogStore.TimePart(DateTime.UtcNow.AddMinutes(-minutesAgo)) + "_" + rest;
+
     internal static void WriteRun(string path, bool ended, params string[] cards)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
@@ -287,7 +337,7 @@ public class MainWindowPagesTests
             // Narrow, the tools found take the tiles' place, each with its group.
             Assert.Equal(Visibility.Collapsed, Get<System.Windows.Controls.Primitives.UniformGrid>(window, "CategoryTiles").Visibility);
             Assert.Equal(Visibility.Visible, Get<StackPanel>(window, "ToolListPanel").Visibility);
-            Assert.Equal("Windows & security", ToolRows(window)[0].GroupLine);
+            Assert.Equal("Defender & security", ToolRows(window)[0].GroupLine);
 
             // Word starts only, across the groups: "ime" finds the IME tools, never the clock ("time").
             search.Text = "ime";
@@ -295,7 +345,7 @@ public class MainWindowPagesTests
             Assert.DoesNotContain(ToolRows(window), r => r.Tool.Button == "SyncClockButton");
             search.Text = "cache";
             Assert.StartsWith("3 tools found: ", Get<TextBlock>(window, "ToolSearchResult").Text);
-            Assert.Equal(new[] { ToolGroup.Apps, ToolGroup.SignIn }, ToolRows(window).Select(r => r.Tool.Group).Distinct().OrderBy(g => g));
+            Assert.Equal(new[] { ToolGroup.Apps, ToolGroup.SignIn, ToolGroup.Microsoft365 }, ToolRows(window).Select(r => r.Tool.Group).Distinct().OrderBy(g => g));
             search.Text = "Company Portal";
             Assert.Equal("PortalButton", ToolRows(window)[0].Tool.Button);
             search.Text = "nothing like this";
@@ -359,15 +409,18 @@ public class MainWindowPagesTests
             using var folder = new TestFolder();
             var window = NewWindow();
             window.RunsFolderOverride = folder.Path;
-            WriteRun(folder.Combine("20261112-090000Z_SyncClock_ab12cd34.log"), true, "[OK] The clock was synchronised");
-            WriteRun(folder.Combine("20261112-091000Z_ClearTeamscache_local-0a1b2c3d.log"), true, "[CHECK] Some items in use were left alone", "[OK] The Teams cache was cleared");
+            // Runs of the last hours: a tool row and a tile show only a result of the last 24 hours.
+            WriteRun(folder.Combine(RecentName(90, "SyncClock_ab12cd34.log")), true, "[OK] The clock was synchronised");
+            WriteRun(folder.Combine(RecentName(60, "ClearTeamscache_local-0a1b2c3d.log")), true, "[CHECK] Some items in use were left alone", "[OK] The Teams cache was cleared");
             Call(window, "ShowPage", PageValue("It"), false);
             // Each tile: its tools and how their last runs ended, in words.
-            Assert.Equal("7 tools · last run OK", Get<TextBlock>(window, "WindowsTileSummary").Text);
-            Assert.Equal("7 tools · 1 warning", Get<TextBlock>(window, "SignInTileSummary").Text);
-            Assert.Equal("4 tools", Get<TextBlock>(window, "AppsTileSummary").Text);
+            Assert.Equal("4 tools · last run OK", Get<TextBlock>(window, "WindowsTileSummary").Text);
+            Assert.Equal("5 tools · 1 warning", Get<TextBlock>(window, "MicrosoftTileSummary").Text);
+            Assert.Equal("2 tools", Get<TextBlock>(window, "SignInTileSummary").Text);
+            Assert.Equal("4 tools", Get<TextBlock>(window, "DefenderTileSummary").Text);
+            Assert.Equal("5 tools", Get<TextBlock>(window, "AppsTileSummary").Text);
             Assert.Equal("4 tools", Get<TextBlock>(window, "NetworkTileSummary").Text);
-            Assert.Equal("Sign-in & Microsoft 365, 7 tools, 1 warning", AutomationProperties.GetName(Get<Button>(window, "SignInTile")));
+            Assert.Equal("Microsoft 365, 5 tools, 1 warning", AutomationProperties.GetName(Get<Button>(window, "MicrosoftTile")));
             // The recent runs say how each ended, and name a check in the app as people know it.
             var recent = ((IEnumerable<RecentRunView>)Get<ItemsControl>(window, "RecentRuns").ItemsSource).ToList();
             // "<time> · <tool> · <how it ended>", without the reference.
@@ -376,16 +429,16 @@ public class MainWindowPagesTests
             Assert.DoesNotContain("local-0a1b2c3d", recent[0].Text);
             Assert.DoesNotContain("ab12cd34", recent[1].Text);
 
-            Call(window, "OnCategoryTile", Get<Button>(window, "SignInTile"), new RoutedEventArgs());
+            Call(window, "OnCategoryTile", Get<Button>(window, "MicrosoftTile"), new RoutedEventArgs());
             Assert.Equal("List", ItViewOf(window));
             Assert.Equal("list", Field(window, "_focusIntent"));
-            Assert.Equal(new[] { "Refresh work account sign-in", "Reset sign-in cache", "Clear Teams cache", "Start Word in safe mode", "Start Excel in safe mode", "Start Outlook (classic) in safe mode", "Start PowerPoint in safe mode" }, ToolRows(window).Select(r => r.Name));
-            Assert.Equal("Not run yet", ToolRows(window)[0].ResultText);
-            Assert.StartsWith("WARNING · ", ToolRows(window)[2].ResultText);
+            Assert.Equal(new[] { "Clear Teams cache", "Start Word in safe mode", "Start Excel in safe mode", "Start Outlook (classic) in safe mode", "Start PowerPoint in safe mode" }, ToolRows(window).Select(r => r.Name));
+            Assert.Equal("", ToolRows(window)[1].ResultText);
+            Assert.StartsWith("WARNING · ", ToolRows(window)[0].ResultText);
             Assert.Equal(Visibility.Visible, Get<DockPanel>(window, "ItBackBar").Visibility);
             Assert.Equal(Visibility.Collapsed, Get<System.Windows.Controls.Primitives.UniformGrid>(window, "CategoryTiles").Visibility);
 
-            Call(window, "OnToolRow", new Button { DataContext = ToolRows(window)[2] }, new RoutedEventArgs());
+            Call(window, "OnToolRow", new Button { DataContext = ToolRows(window)[0] }, new RoutedEventArgs());
             Assert.Equal("Detail", ItViewOf(window));
             Assert.Equal("Clear Teams cache", Get<TextBlock>(window, "ToolDetailTitle").Text);
             // No admin-rights fact; it has no typical time of a minute or more, so only what it closes.
@@ -406,11 +459,11 @@ public class MainWindowPagesTests
             Assert.True((bool)Invoke(window, "ItBack"));
             Assert.Equal("List", ItViewOf(window));
             Assert.Equal("row:TeamsCacheButton", Field(window, "_focusIntent"));
-            Assert.Equal(7, ToolRows(window).Count);
+            Assert.Equal(5, ToolRows(window).Count);
             Assert.Same(Get<Border>(window, "MainStatusHost"), Get<StackPanel>(window, "StatusPanel").Parent);
             Assert.True((bool)Invoke(window, "ItBack"));
             Assert.Equal("Tiles", ItViewOf(window));
-            Assert.Equal("tile:SignIn", Field(window, "_focusIntent"));
+            Assert.Equal("tile:Microsoft365", Field(window, "_focusIntent"));
             Assert.False((bool)Invoke(window, "ItBack"));
         });
     }
@@ -440,7 +493,7 @@ public class MainWindowPagesTests
             Assert.Equal("title", Field(window, "_focusIntent"));
             // Back from there: the tool's group.
             Assert.True((bool)Invoke(window, "ItBack"));
-            Assert.Equal(new[] { "Refresh work account sign-in", "Reset sign-in cache", "Clear Teams cache", "Start Word in safe mode", "Start Excel in safe mode", "Start Outlook (classic) in safe mode", "Start PowerPoint in safe mode" }, ToolRows(window).Select(r => r.Name));
+            Assert.Equal(new[] { "Refresh work account sign-in", "Reset sign-in cache" }, ToolRows(window).Select(r => r.Name));
         });
     }
 
@@ -454,7 +507,7 @@ public class MainWindowPagesTests
             window.ToolInvoker = pressed.Add;
             Call(window, "ShowPage", PageValue("It"), false);
             // Every tool, through the search for all of its group's rows, narrow.
-            foreach (var group in new[] { "AppsTile", "SignInTile", "WindowsTile", "NetworkTile" })
+            foreach (var group in new[] { "AppsTile", "SignInTile", "MicrosoftTile", "WindowsTile", "DefenderTile", "NetworkTile" })
             {
                 Call(window, "OnCategoryTile", Get<Button>(window, group), new RoutedEventArgs());
                 foreach (var row in ToolRows(window))
@@ -481,7 +534,7 @@ public class MainWindowPagesTests
             Call(window, "OnCategoryTile", Get<Button>(window, "WindowsTile"), new RoutedEventArgs());
             AccessibilityTests.Layout(window);
             var list = Get<ItemsControl>(window, "ToolList");
-            var container = (ContentPresenter)list.ItemContainerGenerator.ContainerFromIndex(2);
+            var container = (ContentPresenter)list.ItemContainerGenerator.ContainerFromIndex(0);
             var run = (Button)container.ContentTemplate.FindName("RowRun", container);
             var name = (Button)container.ContentTemplate.FindName("RowName", container);
             Assert.Equal("Sync clock", run.Content);
@@ -497,7 +550,7 @@ public class MainWindowPagesTests
             Call(window, "ShowBusy", false);
             Assert.True(run.IsEnabled);
             // The heavy tool's row keeps the red outline.
-            var repair = (ContentPresenter)list.ItemContainerGenerator.ContainerFromIndex(4);
+            var repair = (ContentPresenter)list.ItemContainerGenerator.ContainerFromIndex(2);
             Assert.Same(Application.Current.FindResource("DangerRunButton"), ((Button)repair.ContentTemplate.FindName("RowRun", repair)).Style);
         });
     }
@@ -510,7 +563,7 @@ public class MainWindowPagesTests
             var window = NewWindow();
             var pressed = new List<string>();
             window.ToolInvoker = b => pressed.Add(b.Name);
-            Call(window, "OpenTool", ToolCatalog.ByButton("BackupKeyButton"), true);
+            Call(window, "OpenTool", ToolCatalog.ByButton("CheckWuButton"), true);
             Assert.True((bool)Invoke(window, "ItBack"));
             var sync = ToolRows(window).Single(r => r.Tool.Button == "SyncClockButton");
             Call(window, "OnToolRowRun", new Button { DataContext = sync }, new RoutedEventArgs());

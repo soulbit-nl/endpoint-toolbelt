@@ -586,7 +586,7 @@ public class WindowsUpdateCheckTests : IDisposable
     public void The_check_is_a_tool_in_For_IT_and_the_first_row_of_Windows_wont_update()
     {
         var tool = ToolCatalog.ByButton("CheckWuButton");
-        Assert.Equal(ToolGroup.WindowsSecurity, tool.Group);
+        Assert.Equal(ToolGroup.Windows, tool.Group);
         Assert.Equal(ToolbeltAction.CheckWindowsUpdate, tool.Action);
         Assert.False(tool.Heavy);
         Assert.Equal("", tool.Changes);

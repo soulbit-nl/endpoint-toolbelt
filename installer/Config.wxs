@@ -43,6 +43,18 @@
       <Component Id="Config_UserRateLimitPerHour" Condition="USERRATELIMIT" Bitness="always64">
         <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="UserRateLimitPerHour" Type="string" Value="[USERRATELIMIT]" KeyPath="yes" />
       </Component>
+      <Component Id="Config_UpdateCheck" Condition="UPDATECHECK" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="UpdateCheck" Type="string" Value="[UPDATECHECK]" KeyPath="yes" />
+      </Component>
+      <!-- That the device's choice was made, readable by every user: the setup's screens run
+           without elevation and cannot read the Config key, so the first screen asks again only
+           where this is missing (a first install, or an upgrade of a device where nobody chose). -->
+      <Component Id="Setup_UpdateCheckAsked" Condition="UPDATECHECK" Bitness="always64">
+        <RegistryKey Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Setup" ForceCreateOnInstall="yes">
+          <PermissionEx Sddl="D:PAI(A;CI;KA;;;SY)(A;CI;KA;;;BA)(A;CI;KR;;;BU)" />
+          <RegistryValue Name="UpdateCheckAsked" Type="string" Value="1" KeyPath="yes" />
+        </RegistryKey>
+      </Component>
       <Component Id="Config_AllowMachineWideOnMultiSession" Condition="ALLOWMULTISESSIONRESET" Bitness="always64">
         <RegistryValue Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="AllowMachineWideOnMultiSession" Type="string" Value="[ALLOWMULTISESSIONRESET]" KeyPath="yes" />
       </Component>
@@ -101,6 +113,19 @@
     </Property>
     <SetProperty Action="SaveCmdLine_AllowMachineWideOnMultiSession" Id="SavedAllowMachineWideOnMultiSession" Value="[ALLOWMULTISESSIONRESET]" Before="AppSearch" Sequence="first" Condition="ALLOWMULTISESSIONRESET" />
     <SetProperty Action="RestoreCmdLine_AllowMachineWideOnMultiSession" Id="ALLOWMULTISESSIONRESET" Value="[SavedAllowMachineWideOnMultiSession]" After="AppSearch" Sequence="first" Condition="SavedAllowMachineWideOnMultiSession" />
+
+    <!-- The version check for the whole device: "0" is off (no request), from the command line or
+         the first screen's check box. A user's own choice in About comes before it; the policy value
+         UpdateCheck locks it. Secure, so the first screen's choice reaches the elevated install. -->
+    <Property Id="UPDATECHECK" Secure="yes">
+      <RegistrySearch Id="Find_UpdateCheck" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Config" Name="UpdateCheck" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Action="SaveCmdLine_UpdateCheck" Id="SavedUpdateCheck" Value="[UPDATECHECK]" Before="AppSearch" Sequence="first" Condition="UPDATECHECK" />
+    <SetProperty Action="RestoreCmdLine_UpdateCheck" Id="UPDATECHECK" Value="[SavedUpdateCheck]" After="AppSearch" Sequence="first" Condition="SavedUpdateCheck" />
+    <!-- Whether the device's choice was made (Setup_UpdateCheckAsked), read where the screens run. -->
+    <Property Id="ETBUPDATECHECKASKED">
+      <RegistrySearch Id="Find_UpdateCheckAsked" Root="HKLM" Key="SOFTWARE\EndpointToolbelt\Setup" Name="UpdateCheckAsked" Type="raw" Bitness="always64" />
+    </Property>
 
   </Fragment>
 </Wix>

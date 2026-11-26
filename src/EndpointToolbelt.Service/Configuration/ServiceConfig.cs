@@ -36,6 +36,13 @@ public sealed class ServiceConfig
     public bool AllowMachineWideOnMultiSession { get; set; } = true;
 
     /// <summary>
+    /// The device's value for the app's version check: false only with <c>UpdateCheck</c> = 0 (policy,
+    /// else the installer's value). The app reads it from the status, as the Config key is readable
+    /// by SYSTEM and Administrators only.
+    /// </summary>
+    public bool UpdateCheck { get; set; } = true;
+
+    /// <summary>
     /// The Windows service an administrator trusts to call the service on behalf of IT support,
     /// or null. Read from the policy key only; while it is null the caller pipe does not exist.
     /// </summary>
@@ -113,6 +120,7 @@ public static class ConfigLoader
         c.WURemoveStalePackages = ReadInt(reader, c, "WURemoveStalePackages", 0, 0, 1) == 1;
         c.UserRateLimitPerHour = ReadInt(reader, c, "UserRateLimitPerHour", c.UserRateLimitPerHour, 1, 60);
         c.AllowMachineWideOnMultiSession = ReadInt(reader, c, "AllowMachineWideOnMultiSession", 1, 0, 1) == 1;
+        c.UpdateCheck = ReadInt(reader, c, "UpdateCheck", 1, 0, 1) == 1;
         c.SupportText = ReadText(reader, c, "SupportText", MaxSupportTextLength, isUrl: false);
         c.SupportUrl = ReadText(reader, c, "SupportUrl", MaxSupportUrlLength, isUrl: true);
         c.TrustedServiceCaller = ReadServiceName(reader, c, ProductInfo.ServiceCallerPolicyValue);

@@ -6,6 +6,8 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>EndpointToolbelt.App</RootNamespace>
     <AssemblyName>EndpointToolbelt</AssemblyName>
+    <!-- The file description Windows shows for the app: Restart Manager in the setup's files-in-use screen, Task Manager. -->
+    <AssemblyTitle>Endpoint Toolbelt</AssemblyTitle>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationManifest>app.manifest</ApplicationManifest>

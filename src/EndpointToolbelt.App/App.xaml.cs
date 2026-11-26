@@ -31,6 +31,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) => LogError(args.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, args) => { LogError(args.Exception); args.SetObserved(); };
 
+
         if (!TakeInstance())
         {
             Shutdown(0);

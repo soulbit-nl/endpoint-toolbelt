@@ -301,8 +301,10 @@ public partial class MainWindow : Window
         _actionButtons = new Dictionary<Button, AppButton>
         {
             [RetryButton] = AppButton.Retry,
+            [RetryToolButton] = AppButton.Retry,
             [PackageButton] = AppButton.Package,
             [ReportButton] = AppButton.Report,
+            [HtmlReportButton] = AppButton.Report,
             [LogsButton] = AppButton.Logs,
             [ClearCacheButton] = AppButton.ClearCache,
             [ConnectivityButton] = AppButton.Connectivity,
@@ -322,6 +324,7 @@ public partial class MainWindow : Window
             [BackupKeyButton] = AppButton.BackupKey,
             [SyncClockButton] = AppButton.SyncClock,
             [UpdateDefenderButton] = AppButton.UpdateDefender,
+            [CheckDefenderButton] = AppButton.CheckDefender,
             [FreeSpaceButton] = AppButton.FreeSpace,
             [RefreshSignInButton] = AppButton.RefreshSignIn,
             [ResetSignInButton] = AppButton.ResetSignIn,
@@ -335,7 +338,9 @@ public partial class MainWindow : Window
         {
             [AppsTile] = ToolGroup.Apps,
             [SignInTile] = ToolGroup.SignIn,
-            [WindowsTile] = ToolGroup.WindowsSecurity,
+            [MicrosoftTile] = ToolGroup.Microsoft365,
+            [WindowsTile] = ToolGroup.Windows,
+            [DefenderTile] = ToolGroup.Defender,
             [NetworkTile] = ToolGroup.NetworkStorage,
         };
         _helperTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(1) };
@@ -537,7 +542,66 @@ public partial class MainWindow : Window
             Words.Count(counts.Fails, "problem"), Words.WarningCount(counts.Warns));
         _ = Task.Run(() => _gateway.ReportEvent(EventId.ClientHealthCounts, text));
         await ShowEarlierRunAsync();
+        await CheckForUpdateAsync();
     }
+
+    /// <summary>The newer version the window shows, or null.</summary>
+    private UpdateOffer _update;
+
+    /// <summary>
+    /// While the version check is on (policy, then the user's choice, then the installer's value),
+    /// shows the newer version the feed named last time, then, at most once a day, reads the feed
+    /// again in the background. Off means no request and nothing shown. A feed that cannot be read
+    /// keeps the last answer; nothing is downloaded or installed.
+    /// </summary>
+    private async Task CheckForUpdateAsync()
+    {
+        try
+        {
+            if (!UpdateCheck.Setting(_settings.UpdateCheckOn, _status?.UpdateCheck).On)
+            {
+                ShowUpdate(null);
+                return;
+            }
+            ShowUpdate(UpdateCheck.Clean(_settings.UpdateOffer));
+            var now = DateTime.UtcNow;
+            if (!UpdateCheck.Due(_settings.UpdateCheckedUtc, now)) { return; }
+            var offer = await Task.Run(UpdateCheck.Fetch);
+            _settings.UpdateCheckedUtc = now;
+            if (offer != null) { _settings.UpdateOffer = offer; }
+            _settings.Save(SettingsPath);
+            ShowUpdate(UpdateCheck.Clean(_settings.UpdateOffer));
+        }
+        catch (Exception)
+        {
+            // A look in the background that fails changes nothing on screen and never stops the start-up.
+        }
+    }
+
+    /// <summary>
+    /// Keeps the newer version for About, and shows the start-up notice when it is due: a newer
+    /// version not yet shown. Once shown, it is not shown again for the same version.
+    /// </summary>
+    private void ShowUpdate(UpdateOffer offer)
+    {
+        _update = UpdateCheck.IsNewer(_version, offer) ? offer : null;
+        if (!UpdateCheck.NoticeDue(_update, _settings.UpdateNoticeShownFor))
+        {
+            if (_update == null) { UpdateNotice.Visibility = Visibility.Collapsed; }
+            return;
+        }
+        UpdateNoticeText.Text = UpdateCheck.NoticeLine(_update);
+        UpdateNotice.Visibility = Visibility.Visible;
+        // A polite live region: a screen reader says the sentence once, as the other live texts.
+        Announce(UpdateNoticeText);
+        _settings.UpdateNoticeShownFor = _update.Version;
+        _settings.Save(SettingsPath);
+    }
+
+    private void OnUpdateNoticeClose(object sender, RoutedEventArgs e) => UpdateNotice.Visibility = Visibility.Collapsed;
+
+    /// <summary>The notice's link: the product's page on the publisher's site, opened in the browser.</summary>
+    private void OnUpdateReleaseNotes(object sender, RoutedEventArgs e) => WebLink.Open(UpdateCheck.ReleaseNotesUrl);
 
     /// <summary>
     /// A repair still running from an earlier session is followed again; one that finished while the
@@ -756,8 +820,17 @@ public partial class MainWindow : Window
         _health = health;
         _dsreg = dsreg;
         if (missing) { _buttons.ServiceLost(); } else { _buttons.ServiceReached(); }
-        UpdateButtons();
+        // The rows first: the buttons read them (Retry work apps and settings is off without the IME).
+        var imeMissingBefore = ImeMissing();
         _healthRows = HealthView.Rows(health);
+        UpdateButtons();
+        // For IT says it on the Retry tool's row and page as soon as the IME comes or goes (a rebuilt list keeps
+        // the focused row, see ShowToolList).
+        if (_page == Page.It && imeMissingBefore != ImeMissing())
+        {
+            ShowToolList();
+            ShowToolDetail();
+        }
         ShowHealth();
         ShowSupportContact();
         ShowHome();
@@ -885,7 +958,9 @@ public partial class MainWindow : Window
     private void ShowHandoverLine(string status = null)
     {
         var text = WithoutPasteHint(status ?? StatusText.Text);
-        var show = Handover.ResultNamesItSupport(text, _cards);
+        // Not on For IT support: its page fits the default window only without the extra line, and
+        // Copy details for IT is in View details there too.
+        var show = _page != Page.It && Handover.ResultNamesItSupport(text, _cards);
         var (hasLink, _) = SupportSet();
         HandoverText.Text = show ? Handover.ResultLine(hasLink, _status?.SupportText) : "";
         HandoverText.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
@@ -922,7 +997,7 @@ public partial class MainWindow : Window
     /// </param>
     private async Task<RunResult> RunActionAsync(ToolbeltAction action, bool confirmed, int confirmedOtherSessions, string runningText, Func<RunOutcome, bool> handBack = null, int interfaceIndex = 0)
     {
-        // The status is this action's from now on (a tool's, or none for Retry, the package and the diagnosis).
+        // The status is this action's from now on (a tool's, or none for the package and the diagnosis).
         SetStatusTool(ToolCatalog.ByAction(action));
         SetStatus(runningText, Tone.Neutral);
         _announcedStep = null;
@@ -987,6 +1062,8 @@ public partial class MainWindow : Window
 
         FollowWuCheck(outcome);
 
+        // The apps were read before the retry and none of them is one it retries (none failed, or each is only offered).
+        var noneRetried = false;
         if (outcome.Action == ToolbeltAction.RetryAppsAndPolicies)
         {
             // A retry the engine ran is a remedy for every app it retries, tied to the
@@ -994,6 +1071,7 @@ public partial class MainWindow : Window
             // other signed-in users retried nothing.
             var retried = _retryApps;
             _retryApps = null;
+            noneRetried = retried is { Count: 0 } && _diagnosisBase is { Run: DiagnosisRunState.Finished };
             if (ResultPresenter.BelongsInHistory(outcome) && retried is { Count: > 0 } && !ResultPresenter.RetrySkipped(outcome))
             {
                 RecordRemedies(retried, RemedyKind.RetryAppsAndPolicies, outcome.RunId ?? "", _retryPressedUtc);
@@ -1024,15 +1102,17 @@ public partial class MainWindow : Window
             {
                 // "Retry requested" until a post-check detected every retried app. One
                 // automatic post-check when the retry ends; after that only the user's Check again.
-                var apps = AppsAfterRetry.Unknown;
+                var apps = noneRetried ? AppsAfterRetry.NoneRetried : AppsAfterRetry.Unknown;
                 var group = PostCheck.RetryGroup(_remedies, DateTime.UtcNow, outcome.RunId ?? "");
                 if (group.Count > 0 && !_buttons.ServiceMissing)
                 {
                     SetStatus("Retry work apps and settings finished. Checking the retried apps once (read-only)...", Tone.Neutral, announce: false);
-                    if (await AutoPostCheckAsync()) { apps = PostCheck.AfterRetry(group); }
+                    if (await ReadAppsInBackgroundAsync()) { apps = PostCheck.AfterRetry(group); }
                 }
                 // Skipped for other signed-in users: only the sync was requested, and no app was retried.
-                var (text, tone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, apps, ResultPresenter.RetrySkipped(outcome));
+                // The other apps of the same diagnosis that need attention: never "Done." while they do.
+                var attention = noneRetried ? _diagnosis?.Apps.Count(AppDecisions.InShortList) ?? 0 : PostCheck.OtherAttention(_diagnosis, group);
+                var (text, tone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, apps, ResultPresenter.RetrySkipped(outcome), attention);
                 SetStatus(text, tone);
             }
         }
@@ -1129,7 +1209,10 @@ public partial class MainWindow : Window
         _shownRun = outcome;
         // A status that the health checks replace at once is not read out twice.
         RenderView(view, final: true, setStatus: true, ResultPresenter.HealthStatusFollows(outcome, view) ? StatusChange.Quiet : StatusChange.Once);
-        // The drawer opens only when the user asks (View details), never by itself.
+        // The drawer opens only when the user asks (View details). A read-only check says its answer on
+        // the page.
+        // Not on a problem path whose verdict line already says this check's answer.
+        if (view.ShowAnswer && !(_page == Page.Problem && ProblemPaths.VerdictSays(_problem, outcome.Action))) { ShowAnswer(view.Status); }
         if (view.CopyLog) { CopyRunLog(outcome, view); }
         // Every run the engine was asked to do is kept in the run history; a request the service
         // turned down before anything ran is not (as in history.log).
@@ -1368,6 +1451,15 @@ public partial class MainWindow : Window
 
     private void OnRetry(object sender, RoutedEventArgs e) => Guarded(async () =>
     {
+        // Pressed before this window read the apps (For IT, Home, a fix link): read them first (read-only), so
+        // the retry has its apps and its post-check, and the Retry tool's sentence says how they stood.
+        if (_diagnosisBase is not { Run: DiagnosisRunState.Finished } && !_buttons.ServiceMissing)
+        {
+            // The status is the retry's from now on, so it shows under the Retry tool's button too.
+            SetStatusTool(ToolCatalog.ByAction(ToolbeltAction.RetryAppsAndPolicies));
+            SetStatus("Reading the work apps first (read-only), so the retry can be checked afterwards...", Tone.Neutral, announce: false);
+            await ReadAppsInBackgroundAsync();
+        }
         // The apps this retry retries, from the diagnosis as read, and when it was asked for.
         _retryApps = PostCheck.Retried(_diagnosisBase);
         _retryPressedUtc = DateTime.UtcNow;
@@ -1447,6 +1539,173 @@ public partial class MainWindow : Window
                 break;
         }
     });
+
+    private void OnHtmlReport(object sender, RoutedEventArgs e) => Guarded(async () =>
+    {
+        SetStatus("Building the device report...", Tone.Neutral);
+        var path = await SaveHtmlReportAsync();
+        if (path == null)
+        {
+            SetStatus("The report could not be saved to your Downloads folder.", Tone.Error);
+            return;
+        }
+        var name = Path.GetFileName(path);
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+            SetStatus("Report saved to your Downloads folder as " + name + " and opened. Give this file to your IT support.", Tone.Success);
+            return;
+        }
+        catch (Win32Exception) { }
+        // Nothing opens .html here: Explorer with the file selected, so the user sees which file to send.
+        try { Process.Start(ExplorerPath, "/select,\"" + path + "\"")?.Dispose(); } catch (Win32Exception) { }
+        SetStatus("Report saved to your Downloads folder as " + name + ". Give this file to your IT support.", Tone.Success);
+    });
+
+    /// <summary>
+    /// Writes the device report as a web page to Downloads, under a new name each time. The health
+    /// checks run again first, as for the text report, and then the read-only checks, as the support
+    /// package collects its data, so the page always holds results of this moment.
+    /// Returns the file's path, or null when it could not be written.
+    /// </summary>
+    private async Task<string> SaveHtmlReportAsync()
+    {
+        await RefreshHealthAsync(keepStatus: true);
+        var (checks, appsWhy) = await RunReportChecksAsync();
+        SetStatus("Building the device report...", Tone.Neutral);
+        if (_page == Page.It) { ShowIt(); }
+        var health = _health;
+        var dsreg = _dsreg;
+        var status = _status;
+        var diagnosis = _diagnosis;
+        var facts = CurrentFacts();
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var now = DateTimeOffset.Now;
+                var html = HtmlReport.Build(DeviceFacts.Read(), dsreg, health, History.Tail(HtmlReport.HistoryLines), now, _version, status, TimeZoneInfo.Local, facts, diagnosis, checks, appsWhy);
+                var path = UserFiles.FreeName(UserFiles.Downloads(), HtmlReport.FileName(now.LocalDateTime), ".html");
+                File.WriteAllText(path, html, new UTF8Encoding(false));
+                return path;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+        });
+    }
+
+    /// <summary>The number of read-only checks the HTML report runs first.</summary>
+    internal const int ReportCheckCount = 5;
+
+    /// <summary>
+    /// The read-only checks the HTML report runs first: the app diagnosis, Check Windows Update and
+    /// Check Defender blocks through the service (they count toward its hourly limit of read-only
+    /// checks, as any run of them does), then Check Microsoft connections and Check compliance
+    /// settings in the app. Each goes into the run history as a run of its own. A check the service
+    /// does not run never stops the export: the page then shows its newest result from the run
+    /// history and says why. A tool the organization switched off is not run.
+    /// </summary>
+    private async Task<(List<ReportCheck> Checks, string AppsNotRunBecause)> RunReportChecksAsync()
+    {
+        var checks = new List<ReportCheck>();
+        var step = 0;
+        void Say(string what) => SetStatus("Building the device report: " + what + " (" + (++step).ToString(CultureInfo.InvariantCulture) + " of "
+            + ReportCheckCount.ToString(CultureInfo.InvariantCulture) + ")...", Tone.Neutral);
+
+        Say("reading the work apps");
+        var apps = await RunServiceForReportAsync(ToolbeltAction.DiagnoseApps);
+        string appsWhy = apps.Why;
+        if (appsWhy == null) { ApplyDiagnosis(apps.Outcome); }
+
+        foreach (var action in new[] { ToolbeltAction.CheckWindowsUpdate, ToolbeltAction.CheckDefenderBlocks })
+        {
+            var tool = ToolCatalog.ByAction(action);
+            var name = tool?.Name ?? ActionText.Name(action);
+            Say(name);
+            var (outcome, why) = await RunServiceForReportAsync(action);
+            if (why == null)
+            {
+                var view = ResultPresenter.Final(outcome);
+                checks.Add(ReportCheck.Ran(name, view.Status, view.Tone, view.Cards, outcome.StartedUtc ?? DateTime.UtcNow));
+            }
+            else
+            {
+                checks.Add(ReportCheck.Stored(name, why, why == ReportCheck.SwitchedOff ? null : NewestLog(tool)));
+            }
+        }
+
+        Say(ConnectivityTest.Name);
+        var connections = ToolCatalog.ByButton(nameof(ConnectivityButton));
+        if (connections != null && !ToolCatalog.Offered(connections, _switchedOff)) { checks.Add(ReportCheck.Stored(ConnectivityTest.Name, ReportCheck.SwitchedOff, null)); }
+        else
+        {
+            var run = LocalRun.Start(ConnectivityTest.Name, DateTime.UtcNow);
+            var routes = ConnectionRoutes();
+            Func<string, int, int, ProbeAnswer> connect = routes is IDirectRoute direct ? direct.Connect : (_, _, _) => ProbeAnswer.Failed(RouteOutcome.Unknown);
+            var result = await Task.Run(() => ConnectivityTest.Run(connect, routes, run.RunId));
+            var contact = ManagementContact.From(_status);
+            var (status, tone, cards) = ConnectivityTest.Present(result, contact, TimeZoneInfo.Local);
+            run.EndedUtc = DateTime.UtcNow;
+            var lines = result.Lines.ToList();
+            if (ConnectivityTest.ContactLine(run.RunId, contact) is string seen) { lines.Add(seen); }
+            SaveToHistory(NewHeader(null, run.Snapshot()), lines, cards.ToList());
+            History.Add(ConnectivityTest.HistoryName, ConnectivityTest.HistoryResult(result), HistoryOverride);
+            checks.Add(ReportCheck.Ran(ConnectivityTest.Name, status, tone, cards, run.StartedUtc));
+        }
+
+        Say(CompliancePath.CheckName);
+        var compliance = ToolCatalog.ByCheckName(CompliancePath.CheckName);
+        if (compliance != null && !ToolCatalog.Offered(compliance, _switchedOff)) { checks.Add(ReportCheck.Stored(CompliancePath.CheckName, ReportCheck.SwitchedOff, null)); }
+        else
+        {
+            var run = LocalRun.Start(CompliancePath.CheckName, DateTime.UtcNow);
+            var outcome = CompliancePath.Check(CompliancePath.Rows(_health, _buttons.ServiceMissing ? null : _status), run.RunId, DateTime.UtcNow);
+            run.EndedUtc = DateTime.UtcNow;
+            SaveToHistory(NewHeader(null, run.Snapshot()), outcome.LogLines.ToList(), outcome.Cards.ToList());
+            History.Add(CompliancePath.HistoryName, CompliancePath.HistoryResult(outcome, run.RunId), HistoryOverride);
+            checks.Add(ReportCheck.Ran(CompliancePath.CheckName, outcome.Status, outcome.Tone, outcome.Cards, run.StartedUtc));
+        }
+        return (checks, appsWhy);
+    }
+
+    /// <summary>
+    /// A read-only service check for the HTML report, kept in the run history as any run; and why it
+    /// did not run (null when it did): switched off, no service, or the service's own answer.
+    /// </summary>
+    private async Task<(RunOutcome Outcome, string Why)> RunServiceForReportAsync(ToolbeltAction action)
+    {
+        var tool = ToolCatalog.ByAction(action);
+        if (tool != null && !ToolCatalog.Offered(tool, _switchedOff)) { return (null, ReportCheck.SwitchedOff); }
+        if (_buttons.ServiceMissing) { return (null, ReportCheck.WhyNot(null)); }
+        var outcome = await Task.Run(() =>
+        {
+            var result = _gateway.Run(action, false, -1, null, out var file);
+            ReceivedFile.Discard(file);
+            return result;
+        });
+        if (ResultPresenter.BelongsInHistory(outcome))
+        {
+            History.Add(outcome.Action.ToString(), ResultPresenter.HistoryResult(outcome), HistoryOverride);
+            var view = ResultPresenter.Final(outcome);
+            SaveToHistory(NewHeader(outcome, null), view.LogLines.ToList(), view.Cards.ToList());
+        }
+        return (outcome, ReportCheck.WhyNot(outcome));
+    }
+
+    /// <summary>A tool's newest run log in the run history; null when it has none.</summary>
+    private StoredRunLog NewestLog(ToolInfo tool)
+    {
+        if (tool == null) { return null; }
+        List<StoredRunLog> logs;
+        try { logs = RunLogStore.List(RunsFolderOverride ?? UserFiles.RunsFolder()); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+        return logs.Where(l => tool.OwnsLogKey(l.Action)).OrderByDescending(l => l.StartedUtc ?? l.WrittenUtc).FirstOrDefault();
+    }
 
     private enum TextFileOpened { InEditor, InFolder, No }
 
@@ -1553,6 +1812,13 @@ public partial class MainWindow : Window
             LeaveIp();
             return;
         }
+        if (_pathFrom == Page.It)
+        {
+            // Show the apps on the Retry tool's page: back to that page, as the window and adapter pages go back to For IT.
+            ShowPage(Page.It, focus: false);
+            Dispatcher.BeginInvoke(new Action(() => ToolDetailTitle.Focus()), DispatcherPriority.Loaded);
+            return;
+        }
         if (_pathFrom == Page.Home)
         {
             var opener = _pathOpener;
@@ -1579,10 +1845,13 @@ public partial class MainWindow : Window
     }
 
     // The page a path (the app path, a problem path, "My problem is not listed") was opened from,
-    // Home or Choose a problem, and on Home the element that opened it. Set once when a path opens
+    // Home, Choose a problem or For IT (Show the apps on the Retry tool's page), and on Home the element that opened it. Set once when a path opens
     // from a page that is no path; going on to the window or adapter page and back keeps it.
     private Page _pathFrom = Page.Problems;
     private UIElement _pathOpener;
+
+    // Show the apps on the Retry tool's page is opening the app path: its origin is For IT then.
+    private bool _appsFromRetryTool;
     private bool _awaitingOpener;
 
     /// <summary>A button's Click reached the window: when it just opened a path from Home, it is the element Back returns to.</summary>
@@ -1616,7 +1885,7 @@ public partial class MainWindow : Window
         // A path opened from a page that is no path (a tab's page) remembers where it came from.
         if (IsPathPage(page) && !IsPathPage(_page) && _page is not (Page.Windows or Page.Ip))
         {
-            _pathFrom = _page == Page.Home ? Page.Home : Page.Problems;
+            _pathFrom = _page == Page.Home ? Page.Home : _page == Page.It && _appsFromRetryTool ? Page.It : Page.Problems;
             // The focused element for now; the button whose click opened the path replaces it when its
             // Click reaches the window (also when it was pressed by an access key or UI Automation).
             _pathOpener = _page == Page.Home ? Keyboard.FocusedElement as UIElement : null;
@@ -1644,7 +1913,8 @@ public partial class MainWindow : Window
         IpPage.Visibility = page == Page.Ip ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(BackButton, (page == Page.Windows && _windowsFrom == Page.It) || (page == Page.Ip && _ipFrom == Page.It) ? "Back to For IT support"
             : page == Page.Ip ? "Back to " + ProblemPaths.Get(Problem.CantConnect).Title
-            : IsPathPage(page) && _pathFrom == Page.Home ? "Back to Home" : "Back to Choose a problem");
+            : IsPathPage(page) && _pathFrom == Page.Home ? "Back to Home"
+            : IsPathPage(page) && _pathFrom == Page.It ? "Back to For IT support" : "Back to Choose a problem");
         ItPage.Visibility = page == Page.It ? Visibility.Visible : Visibility.Collapsed;
         // The Office row shows only when a supported Office app is installed (read again each time).
         if (page == Page.Problems) { ProblemOfficeButton.Visibility = AnyOfficeApp() ? Visibility.Visible : Visibility.Collapsed; }
@@ -1658,6 +1928,7 @@ public partial class MainWindow : Window
             Page.Windows when _windowsFrom == Page.It => ItNav,
             Page.Ip when _ipFrom == Page.It => ItNav,
             Page.Apps or Page.Problem or Page.NotListed or Page.Ip when _pathFrom == Page.Home => HomeNav,
+            Page.Apps or Page.Problem or Page.NotListed when _pathFrom == Page.It => ItNav,
             _ => ProblemsNav,
         };
         foreach (var nav in new[] { HomeNav, ProblemsNav, ItNav })
@@ -2606,6 +2877,15 @@ public partial class MainWindow : Window
         SaveRemedies();
     }
 
+    /// <summary>The Retry steps of apps this diagnosis lists as offered in Company Portal: removed from the user's file.</summary>
+    private void DropRetriesOfOfferedApps(AppDiagnosis diagnosis)
+    {
+        var ended = PostCheck.NotRetriedByIme(_remedies, diagnosis);
+        if (ended.Count == 0) { return; }
+        foreach (var remedy in ended) { _remedies.Remove(remedy); }
+        SaveRemedies();
+    }
+
     /// <summary>The usual install blockers (free disk space, a pending restart) above the app list, one line each.</summary>
     private void ShowAppChecks()
     {
@@ -2709,20 +2989,20 @@ public partial class MainWindow : Window
         if (group.Any(r => _checkedNow.Contains(r)))
         {
             var counts = await RefreshHealthAsync(keepStatus: true);
-            var (retry, retryTone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, PostCheck.AfterRetry(group));
+            var (retry, retryTone) = ResultPresenter.RetryDone(counts.Fails, counts.Warns, PostCheck.AfterRetry(group), otherApps: PostCheck.OtherAttention(_diagnosis, group.Concat(_checkedNow)));
             SetStatus(retry, retryTone);
             return;
         }
-        var (text, tone) = PostCheck.Status(_checkedNow);
+        var (text, tone) = PostCheck.Status(_checkedNow, PostCheck.OtherAttention(_diagnosis, _checkedNow));
         SetStatus(text, tone);
     }
 
     /// <summary>
-    /// One background post-check when Retry work apps and settings ends: the read-only diagnosis,
-    /// without replacing the retry's result in the drawer; its log goes into the run history. True
-    /// when it read the apps.
+    /// The read-only diagnosis in the background, without replacing a result in the drawer: once before a
+    /// Retry work apps and settings when the window has not read the apps, and once as its post-check
+    /// when it ends. Its log goes into the run history. True when it read the apps.
     /// </summary>
-    private async Task<bool> AutoPostCheckAsync()
+    private async Task<bool> ReadAppsInBackgroundAsync()
     {
         var outcome = await Task.Run(() =>
         {
@@ -2783,6 +3063,8 @@ public partial class MainWindow : Window
         var now = DateTime.UtcNow;
         // A Full IME reset is a new start: the steps before it end (their apps' records are gone).
         DropStepsBeforeReset();
+        // A Retry never retries an app only offered in Company Portal: a step recorded for one is removed.
+        DropRetriesOfOfferedApps(diagnosis);
         var before = _remedies.ToDictionary(r => r, r => r.State);
         _checkedNow = PostCheck.Check(_remedies, diagnosis, now);
         if (_checkedNow.Count > 0) { SaveRemedies(); }
@@ -2812,6 +3094,8 @@ public partial class MainWindow : Window
     private void ShowApps(bool focusList)
     {
         var diagnosis = _diagnosis;
+        // The Retry tool's sentence follows every change of the diagnosis, also while its page is shown.
+        ShowRetryToolSummary();
         // Short on the page ("Checked at 12:07"); the whole line (date, zone, nothing changed) is its tooltip and name.
         var runLine = AppDecisions.RunLine(diagnosis);
         DiagnosisRunText.Text = AppDecisions.ShortRunLine(diagnosis, TimeZoneInfo.Local, DateTime.UtcNow);
@@ -2830,7 +3114,10 @@ public partial class MainWindow : Window
         var capped = shortList.Take(AppDecisions.ShortListRows).ToList();
         // The search shows in the all-apps view, after Find another app, and while no app needs attention.
         var searchShown = canSearch && (view || _appSearchOpen || searching || shortList.Count == 0);
-        var shown = searching ? AppDecisions.Search(apps, query) : view ? apps.OrderBy(a => a.App.Label, StringComparer.CurrentCultureIgnoreCase).ThenBy(a => a.App.Scope, StringComparer.Ordinal).ToList() : capped;
+        // No app needs attention: the page says so and lists every app at once, not an empty list with only Show all.
+        var allFine = !view && !searching && shortList.Count == 0 && apps.Count > 0;
+        var listAll = allFine && apps.Count <= AppDecisions.NothingNeedsAttentionListsUpTo;
+        var shown = searching ? AppDecisions.Search(apps, query) : view || listAll ? apps.OrderBy(a => a.App.Label, StringComparer.CurrentCultureIgnoreCase).ThenBy(a => a.App.Scope, StringComparer.Ordinal).ToList() : capped;
         AppSearchBox.Visibility = searchShown ? Visibility.Visible : Visibility.Collapsed;
         AppSearchResult.Visibility = searching ? Visibility.Visible : Visibility.Collapsed;
         AppSearchResult.Text = !searching ? ""
@@ -2853,14 +3140,15 @@ public partial class MainWindow : Window
         var resetLine = view ? "" : AppDecisions.ResetLine(LastImeResetUtc(), TimeText.ParseUtc(_status?.LastImeCheckInUtc), TimeZoneInfo.Local, DateTime.UtcNow);
         AppResetNote.Text = resetLine;
         AppResetNote.Visibility = resetLine.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AppListHeading.Text = view ? "All apps (" + apps.Count.ToString(CultureInfo.InvariantCulture) + ")"
+        AppListHeading.Text = allFine ? AppDecisions.NothingNeedsAttention(apps.Count)
+            : view ? "All apps (" + apps.Count.ToString(CultureInfo.InvariantCulture) + ")"
             : shortList.Count > capped.Count ? "Apps that need attention (" + capped.Count.ToString(CultureInfo.InvariantCulture) + " of " + shortList.Count.ToString(CultureInfo.InvariantCulture) + ")"
             : shortList.Count > 0 ? "Apps that need attention (" + shortList.Count.ToString(CultureInfo.InvariantCulture) + ")" : "";
         AppListHeading.Visibility = !searching && AppListHeading.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         // Find another app opens the search; Show all opens the all-apps view. In the view, Back is the way out.
         AppFindLink.Visibility = !view && canSearch && !searchShown ? Visibility.Visible : Visibility.Collapsed;
         AppListToggle.Content = "Show all " + Words.Count(apps.Count, "app");
-        AppListToggle.Visibility = !view && !searching && apps.Count > capped.Count ? Visibility.Visible : Visibility.Collapsed;
+        AppListToggle.Visibility = !view && !searching && !listAll && apps.Count > capped.Count ? Visibility.Visible : Visibility.Collapsed;
         AppListLinks.Visibility = AppFindLink.Visibility == Visibility.Visible || AppListToggle.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         // Three ways to show the page: the list (the top, the short list, the actions), the all-apps view (the
         // list alone) and the chosen app's view (its details alone, with Retry when its step is to wait).
@@ -2876,7 +3164,7 @@ public partial class MainWindow : Window
         AppsFooter.Visibility = AppsRetry.Visibility == Visibility.Visible || AppsActions.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         if (_page == Page.Apps)
         {
-            AutomationProperties.SetName(BackButton, view || detail ? "Back to the apps that need attention" : _pathFrom == Page.Home ? "Back to Home" : "Back to Choose a problem");
+            AutomationProperties.SetName(BackButton, view || detail ? "Back to the apps that need attention" : _pathFrom == Page.Home ? "Back to Home" : _pathFrom == Page.It ? "Back to For IT support" : "Back to Choose a problem");
         }
         // The details are filled for the chosen app (Home and the tests read them) but shown only in its view.
         ShowAppDetail(_selectedApp ?? (diagnosis?.Main is { SameNameAsAnother: true } twin ? ChooseOne(twin) : null));
@@ -3322,13 +3610,15 @@ public partial class MainWindow : Window
     /// <summary>The four group tiles: each with its tools' summary in words.</summary>
     private void ShowTiles()
     {
+        // A tile sums up the last 24 hours only, as the tool rows do: an older result may no longer be true.
+        var recent = ToolRuns.Recent(_toolRuns, DateTime.UtcNow);
         foreach (var pair in _tiles)
         {
             var group = pair.Value;
             // A group whose tools are all switched off shows no tile.
             pair.Key.Visibility = ToolCatalog.GroupOffered(group, _switchedOff) ? Visibility.Visible : Visibility.Collapsed;
-            var summary = ToolRuns.GroupSummary(group, _toolRuns, _switchedOff);
-            var results = ToolCatalog.InGroup(group, _switchedOff).Where(t => _toolRuns.ContainsKey(t.Button)).Select(t => _toolRuns[t.Button].Result).ToList();
+            var summary = ToolRuns.GroupSummary(group, recent, _switchedOff);
+            var results = ToolCatalog.InGroup(group, _switchedOff).Where(t => recent.ContainsKey(t.Button)).Select(t => recent[t.Button].Result).ToList();
             if (FindName(pair.Key.Name + "Summary") is TextBlock line)
             {
                 line.Text = summary;
@@ -3373,7 +3663,27 @@ public partial class MainWindow : Window
     /// <summary>Why a tool cannot run on this PC ("Not available: Word is not installed on this PC"), or null.</summary>
     private string Unavailable(ToolInfo tool)
         => tool?.Office is OfficeApp app && !OfficeInstalled(app) ? OfficeSafeMode.NotInstalledText(app)
-            : tool?.NeedsOneDrive == true && !OneDriveInstalled() ? OneDriveReset.NotInstalledText : null;
+            : tool?.NeedsOneDrive == true && !OneDriveInstalled() ? OneDriveReset.NotInstalledText
+            : tool?.Button == RetryTool.Button && ImeMissing() ? RetryTool.ImeMissingText : null;
+
+    /// <summary>The health checks found no app installer (IME): no Retry work apps and settings then, as on the app path.</summary>
+    private bool ImeMissing() => _healthRows.Any(r => r.ImeNotInstalled);
+
+    /// <summary>The Retry tool's sentence on its detail page, from the diagnosis in this window; hidden on every other tool and without the IME.</summary>
+    private void ShowRetryToolSummary()
+    {
+        var shown = _itTool?.Button == RetryTool.Button && !ImeMissing();
+        RetryToolSummary.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        if (shown) { RetryToolSummaryText.Text = RetryTool.Summary(_diagnosis, TimeZoneInfo.Local, DateTime.UtcNow); }
+    }
+
+    /// <summary>Show the apps on the Retry tool's page: the app path, which reads the apps when this window has not yet.</summary>
+    private void OnRetryToolApps(object sender, RoutedEventArgs e)
+    {
+        _appsFromRetryTool = true;
+        try { OpenAppPath(); }
+        finally { _appsFromRetryTool = false; }
+    }
 
     /// <summary>The row of a list that has the keyboard focus, and whether on its Run button; no tool when none has it.</summary>
     private static (ToolInfo Tool, bool Run) RowFocus(ItemsControl list)
@@ -3395,7 +3705,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The chosen tool's detail page: its group, name and line, the facts that say something,
-    /// its own button (the other twelve are collapsed), and its last run with a link to its log.
+    /// its own button (the others are collapsed), and its last run with a link to its log.
     /// </summary>
     private void ShowToolDetail()
     {
@@ -3407,6 +3717,7 @@ public partial class MainWindow : Window
         var facts = ToolCatalog.Facts(tool);
         FactTime.Text = tool.Time;
         FactChanges.Text = tool.Changes;
+        ShowRetryToolSummary();
         FactTimePanel.Visibility = tool.Time.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         FactChangesPanel.Visibility = tool.Changes.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         ToolFacts.Columns = Math.Max(1, facts.Count);
@@ -3615,10 +3926,13 @@ public partial class MainWindow : Window
         }), DispatcherPriority.Loaded);
     }
 
+    /// <summary>How many of the newest runs For IT lists; All runs opens the folder with every one.</summary>
+    internal const int RecentRunsShown = 3;
+
     /// <summary>The newest runs of the run history with how each ended, each opening its log.</summary>
     private void ShowRecentRuns(List<StoredRunLog> logs)
     {
-        var runs = logs.Take(5).Select(l =>
+        var runs = logs.Take(RecentRunsShown).Select(l =>
         {
             var (result, outcome) = ToolRuns.ReadRun(l.Path);
             return new RecentRunView(l, TimeZoneInfo.Local, result, outcome);
@@ -3923,6 +4237,8 @@ public partial class MainWindow : Window
         var (status, tone, cards) = ConnectivityTest.Present(result, contact, TimeZoneInfo.Local);
         SetStatus(status, tone);
         foreach (var card in cards) { AddCard(card); }
+        // A read-only check: its answer on the page, also when all is well.
+        ShowAnswer(status);
         // An inspecting proxy's certificate authority goes to Copy details for IT (and the log) only.
         _connectionTicket = (runId, ConnectivityTest.TicketLine(result));
         FinishCheck();
@@ -3948,6 +4264,8 @@ public partial class MainWindow : Window
         foreach (var line in outcome.LogLines) { AppendLog(line); }
         SetStatus(outcome.Status, outcome.Tone);
         foreach (var card in outcome.Cards) { AddCard(card); }
+        // A read-only check: its answer on the page, also when all is well.
+        ShowAnswer(outcome.Status);
         FinishCheck();
         _focusResultAtEnd = true;
         History.Add(CompliancePath.HistoryName, CompliancePath.HistoryResult(outcome, runId), HistoryOverride);
@@ -3993,6 +4311,13 @@ public partial class MainWindow : Window
     private void OnUpdateDefender(object sender, RoutedEventArgs e) => Guarded(async () =>
     {
         var run = await RunActionAsync(ToolbeltAction.UpdateDefender, false, -1, "Updating Microsoft Defender's security intelligence. This can take a few minutes.");
+        if (run != null) { await FinishRunAsync(run); }
+    });
+
+    /// <summary>The read-only check of the Microsoft Defender log; no confirmation, it changes nothing.</summary>
+    private void OnCheckDefender(object sender, RoutedEventArgs e) => Guarded(async () =>
+    {
+        var run = await RunActionAsync(ToolbeltAction.CheckDefenderBlocks, false, -1, "Reading what Microsoft Defender detected or blocked (read-only)...");
         if (run != null) { await FinishRunAsync(run); }
     });
 
@@ -4159,6 +4484,11 @@ public partial class MainWindow : Window
         if (extra == null && _shownRun is { Action: ToolbeltAction.CheckWindowsUpdate } shown)
         {
             lock (_liveLock) { extra = WuCheck.TicketLine(shown); }
+        }
+        // A Defender check adds one line with its counts (no file, rule or name).
+        if (extra == null && _shownRun is { Action: ToolbeltAction.CheckDefenderBlocks } defender)
+        {
+            lock (_liveLock) { extra = DefenderCheck.TicketLine(defender); }
         }
         // A support package run adds the zip's name and SHA-256.
         extra ??= PackageTicketLine(header.Outcome);
@@ -4429,7 +4759,39 @@ public partial class MainWindow : Window
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
-    private void OnAbout(object sender, RoutedEventArgs e) => MessageDialog.Show(this, AboutHeading, AboutBody(_version), AboutLinks);
+    /// <summary>About: the version, a newer one when the feed named it, and the check box for the start-up notice.</summary>
+    private void OnAbout(object sender, RoutedEventArgs e)
+    {
+        var (on, locked) = UpdateCheck.Setting(_settings.UpdateCheckOn, _status?.UpdateCheck);
+        // A policy decides for the organization: then About shows neither the line nor the check box.
+        // While the device's value is unknown (no answer of the service) and the user chose nothing,
+        // the box is not offered either: a tick would outrank an installer's "0" it cannot see.
+        var option = UpdateCheck.OfferChoice(locked, _settings.UpdateCheckOn, _status?.UpdateCheck) ? UpdateCheck.CheckOption : null;
+        // Check now looks at once, also with the check box cleared (the user asks for it); not when a
+        // policy switched the check off. The same request as at start-up; its answer is kept as one.
+        var chosen = MessageDialog.Show(this, AboutHeading, AboutBody(_version, on ? _update : null), AboutLinks, option, on,
+            locked ? null : UpdateCheck.CheckNowButton, UpdateCheck.CheckingNow, locked ? null : CheckNowAsync,
+            "Release notes", UpdateCheck.ReleaseNotesUrl, () => _update != null);
+        if (option == null || chosen == on) { return; }
+        _settings.UpdateCheckOn = chosen;
+        _settings.Save(SettingsPath);
+        // Off: no request any more and nothing shown; on: the next start looks again.
+        if (!chosen) { ShowUpdate(null); }
+    }
+
+    /// <summary>About's Check now: one look at the feed now, kept as the latest answer; it says what it found.</summary>
+    private async Task<string> CheckNowAsync()
+    {
+        var offer = await Task.Run(UpdateCheck.Fetch);
+        if (offer != null)
+        {
+            _settings.UpdateCheckedUtc = DateTime.UtcNow;
+            _settings.UpdateOffer = offer;
+            _settings.Save(SettingsPath);
+            _update = UpdateCheck.IsNewer(_version, offer) ? offer : null;
+        }
+        return UpdateCheck.CheckNowResult(_version, offer);
+    }
 
     /// <summary>The About dialog's links beside OK: the publisher's site with all products and the source code. Each opens the browser only when clicked.</summary>
     internal static readonly IReadOnlyList<WebLink> AboutLinks = new[]
@@ -4447,8 +4809,8 @@ public partial class MainWindow : Window
     /// that Microsoft does not endorse it and the trademark notice. No compatibility sentence: "Works
     /// with Microsoft Intune" read as if it operated Intune.
     /// </summary>
-    internal static string AboutBody(string version) => string.Join(Environment.NewLine,
-        ProductInfo.NameWithPublisher + ", version " + version,
+    internal static string AboutBody(string version, UpdateOffer newer = null) => string.Join(Environment.NewLine,
+        ProductInfo.NameWithPublisher + ", version " + version + (newer != null ? Environment.NewLine + UpdateCheck.AboutLine(newer) : ""),
         ProductInfo.Description + ".",
         "",
         "Copyright (c) 2026 " + ProductInfo.Publisher + ".",
@@ -4496,6 +4858,7 @@ public partial class MainWindow : Window
         var notInstalled = new Dictionary<Button, string>();
         foreach (var app in OfficeSafeMode.Apps) { notInstalled[(Button)FindName(OfficeSafeMode.Button(app))] = OfficeInstalled(app) ? null : OfficeSafeMode.NotInstalledText(app); }
         notInstalled[ResetOneDriveButton] = OneDriveInstalled() ? null : OneDriveReset.NotInstalledText;
+        notInstalled[RetryToolButton] = ImeMissing() ? RetryTool.ImeMissingText : null;
         foreach (var pair in _actionButtons)
         {
             var button = pair.Key;
@@ -4599,6 +4962,8 @@ public partial class MainWindow : Window
         // The health line and the safe-mode question belong to the result they came with.
         StatusHealthText.Text = "";
         StatusHealthText.Visibility = Visibility.Collapsed;
+        StatusAnswerText.Text = "";
+        StatusAnswerText.Visibility = Visibility.Collapsed;
         _safeMode = null;
         SafeModeQuestion.Visibility = Visibility.Collapsed;
         // So do "Does it work now?" and the line to IT support.
@@ -4789,6 +5154,21 @@ public partial class MainWindow : Window
         }
         _drawerNeedsRoom = false;
         _shrinkOnRestore = 0;
+    }
+
+    private void OnDrawerClose(object sender, RoutedEventArgs e) => CloseDrawer();
+
+    /// <summary>
+    /// A read-only check's answer: one sentence on the page under the result word. It is not
+    /// announced: the status line's name is the same sentence and is. The page says it; the app
+    /// shows no Windows notification.
+    /// </summary>
+    private void ShowAnswer(string answer)
+    {
+        if (string.IsNullOrWhiteSpace(answer)) { return; }
+        StatusAnswerText.Text = answer;
+        StatusAnswerText.Foreground = ThemeBrush.For(_statusTone);
+        StatusAnswerText.Visibility = Visibility.Visible;
     }
 
     private void CloseDrawer()

@@ -31,6 +31,9 @@
                   DowngradeErrorMessage="A newer version of Endpoint Toolbelt is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- The screens of an install a person starts (UI.wxs); /qn shows none of them. -->
+    <UIRef Id="EtbUI" />
+
     <Icon Id="ProductIcon" SourceFile="$(var.AssetsDir)\EndpointToolbelt.ico" />
     <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
     <Property Id="ARPNOMODIFY" Value="1" />

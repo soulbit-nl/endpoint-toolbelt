@@ -37,4 +37,11 @@
     <SolidColorBrush x:Key="HelperBit" Color="{x:Static SystemColors.WindowTextColor}" />
     <SolidColorBrush x:Key="HelperSoft" Color="{x:Static SystemColors.GrayTextColor}" />
     <SolidColorBrush x:Key="HelperMark" Color="{x:Static SystemColors.WindowColor}" />
+    <!-- The For IT tiles' icons keep the system's text colour in high contrast. -->
+    <SolidColorBrush x:Key="TileIconApps" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TileIconSignIn" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TileIconMicrosoft365" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TileIconWindows" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TileIconDefender" Color="{x:Static SystemColors.WindowTextColor}" />
+    <SolidColorBrush x:Key="TileIconNetwork" Color="{x:Static SystemColors.WindowTextColor}" />
 </ResourceDictionary>

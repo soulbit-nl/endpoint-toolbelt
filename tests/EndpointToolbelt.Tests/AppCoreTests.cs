@@ -71,6 +71,36 @@ public class AppResultTests
     }
 
     [Fact]
+    public void A_read_only_check_says_its_answer_and_opens_its_card_also_when_all_is_well()
+    {
+        var fine = ResultPresenter.Final(Outcome(ToolbeltAction.CheckDefenderBlocks, 0,
+            Finding("OK", "No threat detection and no Defender block"),
+            new EngineRecord { Type = "summary", Exit = 0, Restart = false }));
+        Assert.Equal(Tone.Success, fine.Tone);
+        Assert.Equal("Check Defender blocks: No threat detection and no Defender block.", fine.Status);
+        Assert.True(fine.ShowAnswer);
+        Assert.Equal("No threat detection and no Defender block", fine.Cards[0].Title);
+
+        // With warnings the status keeps saying that points need checking; the card opens too.
+        var warned = ResultPresenter.Final(Outcome(ToolbeltAction.CheckWindowsUpdate, 2, Finding("WARN", "An update waits"), new EngineRecord { Type = "summary", Exit = 2 }));
+        Assert.True(warned.ShowAnswer);
+
+        // A repair keeps its details behind View details, and the app diagnosis answers on its own page.
+        Assert.False(ResultPresenter.Final(Outcome(ToolbeltAction.RetryAppsAndPolicies, 0, Finding("OK", "done"), new EngineRecord { Type = "summary", Exit = 0 })).ShowAnswer);
+        Assert.False(ResultPresenter.Final(Outcome(ToolbeltAction.DiagnoseApps, 0, Finding("OK", "done"), new EngineRecord { Type = "summary", Exit = 0 })).ShowAnswer);
+    }
+
+    [Fact]
+    public void With_no_app_that_needs_attention_the_page_says_so_and_lists_up_to_twelve()
+    {
+        Assert.Equal("No app needs attention. Your work app:", AppDecisions.NothingNeedsAttention(1));
+        Assert.Equal("No app needs attention. Your 5 work apps:", AppDecisions.NothingNeedsAttention(5));
+        Assert.Equal("No app needs attention. Your 12 work apps:", AppDecisions.NothingNeedsAttention(12));
+        // Above twelve the sentence stays and Show all lists them, so the page fits its window.
+        Assert.Equal("No app needs attention.", AppDecisions.NothingNeedsAttention(13));
+    }
+
+    [Fact]
     public void Problems_come_first_and_the_top_one_is_on_the_status_line()
     {
         var view = ResultPresenter.Final(Outcome(ToolbeltAction.FullReset, 2,

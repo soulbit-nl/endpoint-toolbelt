@@ -194,6 +194,7 @@ public static class RunWords
                 : action == WindowRescue.HistoryName ? WindowRescue.ResultWords(fields[2])
                 : action == IpRenewal.HistoryName ? IpRenewal.ResultWords(fields[2])
                 : action == WuCheck.HistoryName ? WuCheck.ResultWords(fields[2])
+                : action == DefenderCheck.HistoryName ? DefenderCheck.ResultWords(fields[2])
                 : action == CompliancePath.HistoryName ? CompliancePath.ResultWords(fields[2])
                 : OfficeSafeMode.FromHistoryName(action).HasValue ? OfficeSafeMode.ResultWords(fields[2])
                 : action == OneDriveReset.HistoryName ? OneDriveReset.ResultWords(fields[2])

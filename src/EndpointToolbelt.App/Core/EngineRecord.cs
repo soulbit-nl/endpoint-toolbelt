@@ -62,6 +62,9 @@ public sealed class EngineRecord
     /// <summary>A <c>wu-check</c> record: the verdict of Check Windows Update and its facts; null for other records.</summary>
     public WuCheckRecord WuCheck { get; set; }
 
+    /// <summary>A <c>defender-check</c> record: the verdict of Check Defender blocks and its counts; null for other records.</summary>
+    public DefenderCheckRecord DefenderCheck { get; set; }
+
     /// <summary>Parses one record; null when the text is not a record this app can read.</summary>
     public static EngineRecord Parse(string json)
     {
@@ -84,6 +87,7 @@ public sealed class EngineRecord
             else if (record.Type == "apps-diagnosis") { record.Closing = Read<DiagnosisClose>(json); }
             else if (record.Type == "ip-renew") { record.Renewal = IpRenewRecord.Clean(Read<IpRenewRecord>(json)); }
             else if (record.Type == "wu-check") { record.WuCheck = WuCheckRecord.Clean(Read<WuCheckRecord>(json)); }
+            else if (record.Type == "defender-check") { record.DefenderCheck = DefenderCheckRecord.Clean(Read<DefenderCheckRecord>(json)); }
             return record;
         }
         catch (Exception ex) when (ex is SerializationException or InvalidCastException or FormatException or ArgumentException)

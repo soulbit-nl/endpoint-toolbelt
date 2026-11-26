@@ -645,4 +645,42 @@ public class PostCheckTests
         Assert.Empty(RemedyStore.Load(path, UserOne, T0));
         Assert.Empty(RemedyStore.Load(folder.Combine("missing.json"), UserOne, T0));
     }
+    // --- The status after a post-check names the rest of the diagnosis --------------------------
+
+    /// <summary>
+    /// As a real device showed it: the post-check of a Retry found its app detected, while the
+    /// same diagnosis had 4 apps with a packaging problem and 2 for which a retry helps. The status read OK
+    /// and Recent runs said Problem for the same run; now the status names the other apps and is a warning.
+    /// </summary>
+    [Fact]
+    public void The_status_after_a_post_check_names_the_other_apps_that_need_attention_and_is_never_OK_then()
+    {
+        var retry = Retry();
+        var apps = new List<AppEvidence> { App("diag0002", "OK", T0.AddMinutes(20)) };
+        for (var i = 0; i < 4; i++) { apps.Add(App("diag0002", "PACKAGING", T0.AddDays(-1), id: "aaaaaaa" + i + "-0000-0000-0000-000000000000", name: "Packaging " + i)); }
+        for (var i = 0; i < 2; i++) { apps.Add(App("diag0002", "RETRY-HELPS", T0.AddDays(-1), id: "bbbbbbb" + i + "-0000-0000-0000-000000000000", scope: "user", name: "Retry " + i)); }
+        for (var i = 0; i < 3; i++) { apps.Add(App("diag0002", "OK", T0.AddDays(-2), id: "ccccccc" + i + "-0000-0000-0000-000000000000", name: "Fine " + i)); }
+        var after = Diagnosis("diag0002", T0.AddMinutes(30), apps.ToArray());
+        var checkedNow = PostCheck.Check(new[] { retry }, after, T0.AddMinutes(30));
+        Assert.Equal(PostCheckState.Detected, Assert.Single(checkedNow).State);
+        var shown = PostCheck.Overlay(after, new[] { retry }, T0.AddMinutes(30), Amsterdam);
+        Assert.Equal(6, PostCheck.OtherAttention(shown, checkedNow));
+        // The same count from the Retry group, which the closing status of a retry uses.
+        Assert.Equal(6, PostCheck.OtherAttention(shown, PostCheck.RetryGroup(new[] { retry }, T0.AddMinutes(30), "ab12cd34")));
+
+        // The Retry closing status: the retried app is detected, but the run is not "Done".
+        var (retryText, retryTone) = ResultPresenter.RetryDone(0, 0, AppsAfterRetry.AllDetected, otherApps: 6);
+        Assert.Equal("Every app that was retried is now detected, and the health checks are clean. 6 other apps need attention; see the list.", retryText);
+        Assert.Equal(Tone.Warning, retryTone);
+        Assert.Equal(("Done. Every app that was retried is now detected, and the health checks are clean.", Tone.Success), ResultPresenter.RetryDone(0, 0, AppsAfterRetry.AllDetected));
+        Assert.Equal(Tone.Error, ResultPresenter.RetryDone(1, 0, AppsAfterRetry.AllDetected, otherApps: 1).Tone);
+        Assert.EndsWith("1 other app needs attention; see the list.", ResultPresenter.RetryDone(1, 0, AppsAfterRetry.AllDetected, otherApps: 1).Text);
+
+        // Another post-check status the same way.
+        var (text, tone) = PostCheck.Status(checkedNow, 6);
+        Assert.Equal("Post-check: App detected: Contoso Agent. 6 other apps need attention; see the list. Nothing was changed.", text);
+        Assert.Equal(Tone.Warning, tone);
+        Assert.Equal(Tone.Success, PostCheck.Status(checkedNow).Tone);
+        Assert.Equal(0, PostCheck.OtherAttention(null, checkedNow));
+    }
 }

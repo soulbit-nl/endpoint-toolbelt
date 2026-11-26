@@ -152,7 +152,7 @@ public class SafeModeAndIpWindowTests
             MainWindowPagesTests.WaitFor(() => Directory.Exists(window.RunsFolderOverride) && Directory.GetFiles(window.RunsFolderOverride, "*_StartPowerPointinsafemode_*.log").Length == 1);
             MainWindowPagesTests.Call(window, "ShowIt");
             // No badge on the tile, no ENDED anywhere: the row and the recent run say "Start requested".
-            Assert.Equal("7 tools", MainWindowPagesTests.Get<TextBlock>(window, "SignInTileSummary").Text);
+            Assert.Equal("5 tools", MainWindowPagesTests.Get<TextBlock>(window, "MicrosoftTileSummary").Text);
             var recent = ((IEnumerable<RecentRunView>)MainWindowPagesTests.Get<ItemsControl>(window, "RecentRuns").ItemsSource).ToList();
             Assert.EndsWith(" · PowerPoint · Start requested", recent[0].Text);
             Assert.DoesNotContain("local-", recent[0].Text);

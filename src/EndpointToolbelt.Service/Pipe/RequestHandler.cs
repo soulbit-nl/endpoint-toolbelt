@@ -151,6 +151,8 @@ public sealed class RequestHandler : IRequestHandler
             MdmEnrollmentId = enrollmentId,
             // The switched-off tools, so the app hides them and a caller knows.
             DisabledTools = new System.Collections.Generic.List<string>(config.DisabledTools),
+            // The device's value for the version check, which the app cannot read from the Config key.
+            UpdateCheck = config.UpdateCheck,
             Readouts = readouts,
             // The confirmation of the caller's next action must return this nonce.
             ConfirmationNonce = _coordinator.Nonces.Issue(caller.Sid),

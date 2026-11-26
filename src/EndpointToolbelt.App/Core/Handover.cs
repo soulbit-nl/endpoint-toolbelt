@@ -69,11 +69,12 @@ public static class Handover
     /// <summary>
     /// The question follows a repair that ran on a problem path (the path pages; the app path has
     /// its own Check again) and ended with a result that is not a problem: a tool that changes something,
-    /// never a safe-mode start (its own question) and never a tool that only reads or opens.
+    /// never a safe-mode start (its own question), never Retry work apps and settings (its own post-check
+    /// and closing status) and never a tool that only reads or opens.
     /// </summary>
     public static bool AsksWorksNow(Problem? path, ToolInfo tool, RunVerdict verdict)
         => path is Problem p && p != Problem.AppWontInstall
-            && tool != null && tool.Changes.Length > 0 && tool.Office == null && !tool.OpensOnly
+            && tool != null && tool.Changes.Length > 0 && tool.Office == null && !tool.OpensOnly && tool.Action != ToolbeltAction.RetryAppsAndPolicies
             && verdict is RunVerdict.Ok or RunVerdict.Check or RunVerdict.Requested or RunVerdict.Ended;
 
     /// <summary>The answer as the case file's Tried line says it, apart from the run's outcome.</summary>

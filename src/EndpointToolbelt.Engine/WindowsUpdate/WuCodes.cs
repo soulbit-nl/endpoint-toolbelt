@@ -33,7 +33,9 @@ public static class WuCodes
     public static readonly Regex OldCacheFolder = new(@"\.old-[0-9]{8}-[0-9]{6}$", Options, Limit);
 
     // Failure codes, grouped by the repair they lead to. These sets route; the code table only explains.
-    public static readonly string[] ServicingCodes = { "0x800f0993", "0x80073712", "0x800f0983", "0x800f0984" };
+    // Microsoft's "Common Windows Update errors" page names component store damage as the cause of
+    // 0x800f0831, 0x80073701, 0x8007371b, 0x80070570 and 0x800f0825, so they take the system file repair.
+    public static readonly string[] ServicingCodes = { "0x800f0993", "0x80073712", "0x800f0983", "0x800f0984", "0x800f0831", "0x80073701", "0x8007371b", "0x80070570", "0x800f0825" };
     public static readonly string[] TxLogCodes = { "0x800719e4" };
     public static readonly string[] SpaceCodes = { "0x800f0922", "0xc190020e" };
 
@@ -42,7 +44,10 @@ public static class WuCodes
     // 0x800f0906 is the download of the repair files failing (connection or repair source).
     public static readonly string[] SourceCodes = { "0x800f081f", "0x800f0915", "0x800f0906" };
     public static readonly string[] SourceDownloadCodes = { "0x800f0906" };
-    public static readonly string[] DeliveryCodes = { "0x80244022", "0x8024402c", "0x80072ee2", "0x80246007", "0x80246010" };
+    // The same page names a firewall, proxy or TLS problem on the way to the update service for
+    // 0x80072efd, 0x80072efe, 0x80d02002, 0x8024401b, 0x80072f8f and 0x80200053: the network path,
+    // not a damaged Windows, so they never take the system file repair that unknown codes get.
+    public static readonly string[] DeliveryCodes = { "0x80244022", "0x8024402c", "0x80072ee2", "0x80246007", "0x80246010", "0x80072efd", "0x80072efe", "0x80d02002", "0x8024401b", "0x80072f8f", "0x80200053" };
 
     // A policy blocks Windows Update or its use as the repair source. Reported only: nothing on the
     // device fixes a policy, and a store repair cannot get past it. Each with the policy it points

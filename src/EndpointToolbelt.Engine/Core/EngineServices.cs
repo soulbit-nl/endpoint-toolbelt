@@ -176,6 +176,9 @@ public sealed class EngineServices
     public ITaskScheduler TaskScheduler { get; set; } = new WindowsTaskScheduler();
     public IWindowsUpdateSystem WindowsUpdate { get; set; } = new WindowsUpdateSystem();
 
+    /// <summary>The Microsoft Defender operational log (read-only; tests use their own).</summary>
+    public IDefenderEventSource DefenderEvents { get; set; } = new WindowsDefenderEventSource();
+
     /// <summary>The network adapters (read) and the one call that renews an adapter's DHCP lease.</summary>
     public INetworkAdapters Network { get; set; } = new WmiNetworkAdapters();
     public ILeaseRenewer LeaseRenewer { get; set; } = new WmiNetworkAdapters();

@@ -5,12 +5,17 @@ using System.Linq;
 
 namespace EndpointToolbelt.App.Core;
 
-/// <summary>The four groups of the tools in "For IT"; each tool is in exactly one.</summary>
+/// <summary>
+/// The six groups of the tools in "For IT"; each tool is in exactly one. At most five tools a group, so
+/// every group fits the default window with its status shown and has room for new tools.
+/// </summary>
 public enum ToolGroup
 {
     Apps,
     SignIn,
-    WindowsSecurity,
+    Microsoft365,
+    Windows,
+    Defender,
     NetworkStorage,
 }
 
@@ -143,13 +148,14 @@ public static class ToolCatalog
 
     /// <summary>
     /// A tool no problem page offers: not among the paths' tools, not the tool of the window or the network
-    /// adapter page, and not a health row's fix (Home and Device health offer those). Its line says to use it
+    /// adapter page, not Retry work apps and settings (Home, the app path and the health rows offer it), and
+    /// not a health row's fix (Home and Device health offer those). Its line says to use it
     /// when IT support asks. Every heavy tool (a long repair) says so too: a problem page shows it in its group "With IT support".
     /// </summary>
     public static bool ForItOnly(ToolInfo tool) => tool != null && (tool.Heavy || !SelfService.Value.Contains(tool.Button));
 
     private static readonly Lazy<HashSet<string>> SelfService = new(() => new HashSet<string>(
-        ProblemPaths.All.SelectMany(p => p.Tools).Concat(new[] { "WindowBackButton", "RenewIpButton" })
+        ProblemPaths.All.SelectMany(p => p.Tools).Concat(new[] { "WindowBackButton", "RenewIpButton", RetryTool.Button })
             .Concat(Enum.GetValues(typeof(HealthFix)).Cast<HealthFix>().Select(ForFix).Where(t => t != null).Select(t => t.Button)), StringComparer.Ordinal));
 
     // The words every safe-mode tool is found by; before All, which uses it while it is set up.
@@ -157,6 +163,11 @@ public static class ToolCatalog
 
     public static readonly IReadOnlyList<ToolInfo> All = new[]
     {
+        // The app path's Retry, pressed at once. It cannot be switched off: its action is no tool of
+        // ToolPolicy, so the policy value never names it.
+        new ToolInfo(RetryTool.Button, ToolGroup.Apps, "Retry work apps and settings", "Tries every failed work app again and asks Intune for all settings again.",
+            "retry", "sync", "IME", "apps", "policies", "settings", "Company Portal")
+            { Action = ToolbeltAction.RetryAppsAndPolicies, ButtonText = "Retry apps and settings", Changes = "Restarts the IME, clears its retry timers and syncs. Installed apps stay." },
         new ToolInfo("ClearCacheButton", ToolGroup.Apps, "Clear downloaded app content", "Removes app content the Intune Management Extension unpacked, so it downloads it again.",
             "IMECache", "cache", "download", "content", "app")
             { Action = ToolbeltAction.ClearAppCache, ButtonText = "Clear app content", Changes = "Removes downloaded app content; apps download it again when they next install." },
@@ -175,7 +186,7 @@ public static class ToolCatalog
         new ToolInfo("ResetSignInButton", ToolGroup.SignIn, "Reset sign-in cache", "Removes the cached sign-in of your Microsoft 365 apps. Close them first.",
             "sign-in", "Office", "Outlook", "Microsoft 365", "token", "login", "password")
             { CheckName = "Reset sign-in cache", PolicyName = ToolPolicy.ResetSignInCache, Changes = "Asks before it closes open Microsoft 365 apps (they get up to 20 seconds); removes your cached work account sign-in.", HealthRow = HealthView.WorkAccount },
-        new ToolInfo("TeamsCacheButton", ToolGroup.SignIn, "Clear Teams cache", "Closes Teams and clears its cache in your profile.",
+        new ToolInfo("TeamsCacheButton", ToolGroup.Microsoft365, "Clear Teams cache", "Closes Teams and clears its cache in your profile.",
             "Teams", "cache", "Microsoft 365", "sign-in")
             { CheckName = "Clear Teams cache", PolicyName = ToolPolicy.ClearTeamsCache, Changes = "Closes Teams and clears its cache in your profile. Chats and files stay in Microsoft 365." },
         // Offered only when the Office desktop app is installed; they run as the user, in the app.
@@ -183,30 +194,36 @@ public static class ToolCatalog
         SafeModeTool(OfficeApp.Excel, "Excel"),
         SafeModeTool(OfficeApp.Outlook, "Outlook", "mail", "classic"),
         SafeModeTool(OfficeApp.PowerPoint, "PowerPoint", "slides", "presentation"),
-        new ToolInfo("UpdateDefenderButton", ToolGroup.WindowsSecurity, "Update Defender definitions", "Gets Microsoft Defender's latest security intelligence now.",
+        new ToolInfo("UpdateDefenderButton", ToolGroup.Defender, "Update Defender definitions", "Gets Microsoft Defender's latest security intelligence now.",
             "Defender", "antivirus", "security", "signatures", "virus")
             { Action = ToolbeltAction.UpdateDefender, ButtonText = "Update definitions", Time = "A few minutes.", Changes = "Updates Microsoft Defender's security intelligence.", HealthRow = HealthChecks.Defender },
-        new ToolInfo("BackupKeyButton", ToolGroup.WindowsSecurity, "Back up recovery key", "Saves the BitLocker recovery key to your organization's Microsoft Entra ID.",
+        // Read-only; it says which threats Microsoft Defender detected and what its attack surface
+        // reduction rules, controlled folder access and network protection blocked, and changes no
+        // rule, allowed app or exclusion.
+        new ToolInfo("CheckDefenderButton", ToolGroup.Defender, DefenderCheck.Name, "Reads what Microsoft Defender detected or blocked in the last 14 days: threats, attack surface reduction rules, protected folders and network connections. Changes nothing.",
+            "Defender", "blocked", "block", "ASR", "attack surface reduction", "controlled folder access", "protected folder", "cannot save", "network protection", "website", "antivirus", "virus", "threat", "detection", "quarantine", "security")
+            { Action = ToolbeltAction.CheckDefenderBlocks, ButtonText = "Check blocks" },
+        new ToolInfo("BackupKeyButton", ToolGroup.Defender, "Back up recovery key", "Saves the BitLocker recovery key to your organization's Microsoft Entra ID.",
             "BitLocker", "recovery", "encryption", "key")
             { Action = ToolbeltAction.BackupRecoveryKey, Changes = "Saves the drive's existing recovery key to Microsoft Entra ID; nothing on the drive changes." },
-        new ToolInfo("SyncClockButton", ToolGroup.WindowsSecurity, "Sync clock", "Sets the clock from its time source.",
+        new ToolInfo("SyncClockButton", ToolGroup.Windows, "Sync clock", "Sets the clock from its time source.",
             "clock", "time", "date", "w32tm")
             { Action = ToolbeltAction.SyncClock, Changes = "Sets the clock from its existing time source.", HealthRow = HealthChecks.Clock },
         // Read-only; it says why Windows does not update and which next step fits, and never repairs.
-        new ToolInfo("CheckWuButton", ToolGroup.WindowsSecurity, WuCheck.Name, "Reads why Windows does not update: the last update, failures, policies, services, a waiting restart and disk space. Changes nothing.",
+        new ToolInfo("CheckWuButton", ToolGroup.Windows, WuCheck.Name, "Reads why Windows does not update: the last update, failures, policies, services, a waiting restart and disk space. Changes nothing.",
             "Windows Update", "update", "updates", "patch", "cumulative", "WSUS", "policy", "pause", "check")
             { Action = ToolbeltAction.CheckWindowsUpdate },
-        new ToolInfo("RepairWuButton", ToolGroup.WindowsSecurity, "Repair Windows Update", "Checks Windows Update and repairs what is broken. Can take up to about two hours.",
+        new ToolInfo("RepairWuButton", ToolGroup.Windows, "Repair Windows Update", "Checks Windows Update and repairs what is broken. Can take up to about two hours.",
             "Windows Update", "update", "updates", "patch", "cumulative")
             { Action = ToolbeltAction.RepairWU, Heavy = true, Time = "Seconds when nothing is wrong; usually 15 to 60 minutes for a repair or an install.", Changes = "Only the repair that fits what it finds; it may install updates and ask for a restart.", HealthRow = HealthChecks.PendingRestart },
         new ToolInfo("ConnectivityButton", ToolGroup.NetworkStorage, ConnectivityTest.Name, "Checks whether device management, work account sign-in, device registration, download optimization and Outlook on the web answer this PC over a secure connection.",
             "network", "connect", "connection", "connectivity", "internet", "proxy", "VPN", "firewall", "offline", "Intune", "Outlook")
             { CheckName = ConnectivityTest.Name, ButtonText = "Check connections", PolicyName = ToolPolicy.CheckConnections, EarlierLogKeys = new[] { RunLogStore.KeyFor(ConnectivityTest.EarlierName) }, HealthRow = HealthView.Network },
-        new ToolInfo("WindowBackButton", ToolGroup.WindowsSecurity, WindowRescue.Name, "Moves an open app window that is off-screen, for example after undocking, back onto your screen.",
+        new ToolInfo("WindowBackButton", ToolGroup.Windows, WindowRescue.Name, "Moves an open app window that is off-screen, for example after undocking, back onto your screen.",
             "window", "off-screen", "offscreen", "monitor", "screen", "display", "dock", "undock", "missing", "lost")
             { CheckName = WindowRescue.Name, PolicyName = ToolPolicy.BringWindowBack, OpensPage = true, ButtonText = "Choose a window" },
         // The read-only check of "My device is blocked or 'not compliant'"; it runs in the app.
-        new ToolInfo("ComplianceButton", ToolGroup.WindowsSecurity, CompliancePath.CheckName, "Reads the settings compliance policies usually check on this device and gives each one that is off its next step. It cannot see the compliance verdict.",
+        new ToolInfo("ComplianceButton", ToolGroup.Defender, CompliancePath.CheckName, "Reads the settings compliance policies usually check on this device and gives each one that is off its next step. It cannot see the compliance verdict.",
             "compliance", "compliant", "not compliant", "blocked", "Conditional Access", "requirements", "BitLocker", "firewall", "Secure Boot", "TPM", "Company Portal")
             { CheckName = CompliancePath.CheckName, PolicyName = ToolPolicy.CheckCompliance, ButtonText = "Check settings" },
         new ToolInfo("FreeSpaceButton", ToolGroup.NetworkStorage, "Free up disk space", "Removes old temporary files and Windows components that newer updates replaced.",
@@ -223,12 +240,12 @@ public static class ToolCatalog
               Changes = "Disconnects and reconnects every OneDrive account, work and personal; they sync again from the start. Files stay where they are." },
     };
 
-    /// <summary>The safe-mode tool of one Office app, in Sign-in &amp; Microsoft 365.</summary>
+    /// <summary>The safe-mode tool of one Office app, in Microsoft 365.</summary>
     private static ToolInfo SafeModeTool(OfficeApp app, params string[] words)
     {
         var name = OfficeSafeMode.AppName(app);
         var keywords = words.Concat(OfficeWords).ToArray();
-        return new ToolInfo(OfficeSafeMode.Button(app), ToolGroup.SignIn, OfficeSafeMode.ToolName(app),
+        return new ToolInfo(OfficeSafeMode.Button(app), ToolGroup.Microsoft365, OfficeSafeMode.ToolName(app),
             "Starts " + name + " without add-ins and with default settings, to see whether " + name + " works that way.", keywords)
             // The row and the detail page already name the app; the button names the action.
             { CheckName = OfficeSafeMode.ToolName(app), Office = app, ShortName = name, PolicyName = SafeModePolicyName(app), ButtonText = "Start in safe mode" };
@@ -243,14 +260,17 @@ public static class ToolCatalog
         _ => ToolPolicy.PowerPointSafeMode,
     };
 
-    /// <summary>The tool is offered: the organization did not switch it off (<paramref name="switchedOff"/> null: none is off).</summary>
+    /// <summary>
+    /// The tool is offered: the organization did not switch it off (<paramref name="switchedOff"/> null: none is off).
+    /// A service action that is no tool of <see cref="ToolPolicy"/> (Retry work apps and settings) is never off.
+    /// </summary>
     public static bool Offered(ToolInfo tool, IEnumerable<string> switchedOff)
-        => tool != null && !ToolPolicy.IsOff(switchedOff, tool.PolicyName);
+        => tool != null && !(tool.InService ? ToolPolicy.IsOff(switchedOff, tool.Action.Value) : ToolPolicy.IsOff(switchedOff, tool.PolicyName));
 
     /// <summary>The tool with this button is offered; false for a button that is no tool.</summary>
     public static bool Offered(string button, IEnumerable<string> switchedOff) => Offered(ByButton(button), switchedOff);
 
-    /// <summary>The tool a health row's fix link presses, or null (Retry work apps and settings is no tool of For IT and cannot be switched off).</summary>
+    /// <summary>The tool a health row's fix link presses, or null (Retry work apps and settings: the row's fix presses the app path's Retry, which cannot be switched off).</summary>
     public static ToolInfo ForFix(HealthFix fix) => fix switch
     {
         HealthFix.ConnectivityTest => ByButton("ConnectivityButton"),
@@ -273,8 +293,10 @@ public static class ToolCatalog
     public static string GroupName(ToolGroup group) => group switch
     {
         ToolGroup.Apps => "Apps",
-        ToolGroup.SignIn => "Sign-in & Microsoft 365",
-        ToolGroup.WindowsSecurity => "Windows & security",
+        ToolGroup.SignIn => "Sign-in",
+        ToolGroup.Microsoft365 => "Microsoft 365",
+        ToolGroup.Windows => "Windows",
+        ToolGroup.Defender => "Defender & security",
         _ => "Network & storage",
     };
 
@@ -286,7 +308,7 @@ public static class ToolCatalog
     /// <summary>The tool whose run logs carry this name, or null.</summary>
     public static ToolInfo ByLogKey(string key) => string.IsNullOrEmpty(key) ? null : All.FirstOrDefault(t => t.OwnsLogKey(key));
 
-    /// <summary>The tool a service action belongs to, or null (Retry work apps and settings, the support package and the app diagnosis are not tools of For IT).</summary>
+    /// <summary>The tool a service action belongs to, or null (the support package and the app diagnosis are not tools of For IT).</summary>
     public static ToolInfo ByAction(ToolbeltAction action) => All.FirstOrDefault(t => t.Action == action);
 
     /// <summary>The tool that runs in the app under this check name, or null.</summary>
@@ -486,6 +508,13 @@ public static class ProblemPaths
     public static readonly IReadOnlyList<string> InstallBlockers = new[] { HealthChecks.FreeSpace, HealthChecks.PendingRestart };
 
     public static ProblemPath Get(Problem problem) => All.First(p => p.Problem == problem);
+
+    /// <summary>
+    /// Whether a path's verdict line already says a check's answer, so the answer line below the status
+    /// would say it twice (and push the page into scrolling): the Windows Update path says Check Windows
+    /// Update's. The compliance path counts its rows and is no copy of Check compliance settings.
+    /// </summary>
+    public static bool VerdictSays(Problem problem, ToolbeltAction action) => problem == Problem.WindowsWontUpdate && action == ToolbeltAction.CheckWindowsUpdate;
 
     /// <summary>The rows whose symptom words find this tool in the For IT search.</summary>
     public static IEnumerable<ProblemPath> LeadingTo(string button) => All.Where(p => (p.SearchTools ?? p.Tools).Contains(button));

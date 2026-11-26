@@ -16,6 +16,12 @@ public enum AppsAfterRetry
 
     /// <summary>At least one retried app still fails.</summary>
     SomeFailing,
+
+    /// <summary>
+    /// The apps were read, and none of them is one Retry retries: none failed, or each that needs attention is
+    /// offered in Company Portal, a line-of-business app the MDM stack retries, or needs IT support.
+    /// </summary>
+    NoneRetried,
 }
 
 /// <summary>How the status line reads: its colour follows this, its words carry the meaning.</summary>
@@ -64,6 +70,38 @@ public sealed class ResultCard
 
     /// <summary>The whole card in one sentence, so a screen reader reads the evidence and both steps too.</summary>
     public string AccessibleText => string.Join(" ", new[] { Word + ": " + Sentence(Title), Detail, NextStepLine, SupportLine }.Where(s => !string.IsNullOrEmpty(s)));
+
+    /// <summary>The longest name a card gives assistive technology; a longer card moves its steps to the help text.</summary>
+    public const int MaxAccessibleName = 500;
+
+    /// <summary>
+    /// The card's name for assistive technology: the whole card when it fits in
+    /// <see cref="MaxAccessibleName"/> characters; otherwise the severity, the title and the evidence
+    /// (or the severity and the title alone), with the steps in <see cref="AccessibleHelp"/>, so a
+    /// screen reader still reads every part and no name is unreasonably long.
+    /// </summary>
+    public string AccessibleName
+    {
+        get
+        {
+            var all = AccessibleText;
+            if (all.Length <= MaxAccessibleName) { return all; }
+            var head = string.Join(" ", new[] { Word + ": " + Sentence(Title), Detail }.Where(s => !string.IsNullOrEmpty(s)));
+            return head.Length <= MaxAccessibleName ? head : Word + ": " + Sentence(Title);
+        }
+    }
+
+    /// <summary>What <see cref="AccessibleName"/> leaves out of a long card (the evidence and the steps), or empty.</summary>
+    public string AccessibleHelp
+    {
+        get
+        {
+            var name = AccessibleName;
+            if (name == AccessibleText) { return ""; }
+            var rest = name.Length > (Word + ": " + Sentence(Title)).Length ? new[] { NextStepLine, SupportLine } : new[] { Detail, NextStepLine, SupportLine };
+            return string.Join(" ", rest.Where(s => !string.IsNullOrEmpty(s)));
+        }
+    }
 
     /// <summary>A title as a sentence: one closing period, not two when the title already has one.</summary>
     internal static string Sentence(string text)
@@ -132,6 +170,13 @@ public sealed class ResultView
     /// </summary>
     public bool OpenDrawer { get; set; }
 
+    /// <summary>
+    /// A read-only check ended with its answer: the window opens the details at once, so the
+    /// answer's card (the verdict, what was read, what is not read) shows without a click, also when
+    /// all is well. Every other run keeps its details behind View details.
+    /// </summary>
+    public bool ShowAnswer { get; set; }
+
     /// <summary>Copy the run's log to Downloads for support (a run that failed or ended with warnings).</summary>
     public bool CopyLog { get; set; }
 
@@ -179,7 +224,17 @@ public static class ResultPresenter
     /// The IME restart and timer clear were skipped (other people signed in, IME-REFRESH-SKIPPED):
     /// only the sync was requested, so the status says that, and never "Retry requested".
     /// </param>
-    public static (string Text, Tone Tone) RetryDone(int failedChecks, int warnChecks, AppsAfterRetry apps, bool retrySkipped = false)
+    public static (string Text, Tone Tone) RetryDone(int failedChecks, int warnChecks, AppsAfterRetry apps, bool retrySkipped = false, int otherApps = 0)
+    {
+        if (apps == AppsAfterRetry.NoneRetried && !retrySkipped) { return NoneRetriedDone(failedChecks, warnChecks, otherApps); }
+        var (text, tone) = RetryDoneOwn(failedChecks, warnChecks, apps, retrySkipped);
+        if (otherApps <= 0) { return (text, tone); }
+        // The same diagnosis found other apps that need attention: the status says so and is never OK.
+        if (text.StartsWith("Done. ", StringComparison.Ordinal)) { text = text.Substring("Done. ".Length); }
+        return (text + " " + PostCheck.OthersText(otherApps) + "; see the list.", tone is Tone.Error ? Tone.Error : Tone.Warning);
+    }
+
+    private static (string Text, Tone Tone) RetryDoneOwn(int failedChecks, int warnChecks, AppsAfterRetry apps, bool retrySkipped)
     {
         if (retrySkipped) { return SyncOnlyDone(failedChecks, warnChecks); }
         var checks = failedChecks > 0
@@ -201,6 +256,28 @@ public static class ResultPresenter
         if (failedChecks > 0) { return ("Retry requested, but " + checks + "." + pending + " Create a support package if the problems stay.", Tone.Warning); }
         if (warnChecks > 0) { return ("Retry requested. No problems in the health checks, but " + Words.Count(warnChecks, "point") + (warnChecks == 1 ? " needs" : " need") + " checking." + pending, Tone.Warning); }
         return ("Retry requested. Intune was asked to check this device again." + pending, Tone.Neutral);
+    }
+
+    /// <summary>
+    /// A retry with no app to retry: "No app needed a retry." when none needs attention; else how many do and that
+    /// none of them is one the app installer retries by itself, as a warning (they still need attention).
+    /// </summary>
+    /// <param name="attention">The apps of the diagnosis that need attention (its short list).</param>
+    private static (string Text, Tone Tone) NoneRetriedDone(int failedChecks, int warnChecks, int attention)
+    {
+        var checks = failedChecks > 0
+            ? Words.Count(failedChecks, "problem") + (failedChecks == 1 ? " remains" : " remain") + " in the health checks"
+            : warnChecks > 0
+                ? Words.Count(warnChecks, "point") + (warnChecks == 1 ? " needs" : " need") + " checking in the health checks"
+                : "";
+        var text = "Retry requested: Intune was asked to check this device again" + (checks.Length > 0 ? ", but " + checks : "") + ".";
+        if (attention <= 0)
+        {
+            return (text + " No app needed a retry.", failedChecks > 0 ? Tone.Error : warnChecks > 0 ? Tone.Warning : Tone.Neutral);
+        }
+        return (text + " " + Words.Count(attention, "app") + (attention == 1 ? " needs" : " need")
+            + " attention, and none is one the app installer retries by itself: install an app offered in Company Portal there, and see the list for the next step of the others.",
+            failedChecks > 0 ? Tone.Error : Tone.Warning);
     }
 
     /// <summary>The finding of a Retry work apps and settings run whose IME half stood down for other signed-in users.</summary>
@@ -321,6 +398,8 @@ public static class ResultPresenter
         if (outcome.Action == ToolbeltAction.RenewIpAddress && !outcome.InProgress) { IpRenewal.Apply(general, outcome); }
         // Check Windows Update says its verdict and the one next step in the status.
         if (outcome.Action == ToolbeltAction.CheckWindowsUpdate && !outcome.InProgress) { WuCheck.Apply(general, outcome); }
+        // Check Defender blocks says what the log held, in counts.
+        if (outcome.Action == ToolbeltAction.CheckDefenderBlocks && !outcome.InProgress) { DefenderCheck.Apply(general, outcome); }
         return general;
     }
 
@@ -417,6 +496,18 @@ public static class ResultPresenter
         {
             view.Tone = Tone.Warning;
             view.Status = name + " completed. Restart the device to finish it.";
+        }
+        // A read-only check is its answer: the status line says what it found ("Check Defender blocks:
+        // No threat detection and no Defender block."), not only that it completed, and its card opens.
+        // The app diagnosis is not one: its answer is the app page itself.
+        var readOnly = !earlierRun && outcome.Action != ToolbeltAction.DiagnoseApps && ActionCatalog.IsDefined(outcome.Action) && ActionCatalog.Get(outcome.Action).ReadOnly;
+        if (readOnly && answer != null && (exit == EngineExitCode.Success || exit == EngineExitCode.Warnings || exit == EngineExitCode.NothingToRepair))
+        {
+            if (!problemRemains && exit != EngineExitCode.Warnings)
+            {
+                view.Status = name + ": " + TimeText.ToLocal(answer.Title).TrimEnd('.') + ".";
+            }
+            view.ShowAnswer = true;
         }
 
         // The log goes to Downloads for support after a run that did not go well: not after a
@@ -619,6 +710,7 @@ public static class ResultPresenter
         // The exit code with the run ID and the result, so the history says what Windows confirmed.
         if (outcome.Action == ToolbeltAction.RenewIpAddress && IpRenewal.HistoryResult(outcome) is string renewal) { return renewal; }
         if (outcome.Action == ToolbeltAction.CheckWindowsUpdate && WuCheck.HistoryResult(outcome) is string check) { return check; }
+        if (outcome.Action == ToolbeltAction.CheckDefenderBlocks && DefenderCheck.HistoryResult(outcome) is string defender) { return defender; }
         // Exit 2 says "with warnings"; a run whose findings were only OK or INFO (a sync Windows already queued)
         // keeps that word in the history, with its reference, so the device report does not call it a warning.
         if (outcome.Result == ResultCode.Completed && outcome.ExitCode == EngineExitCode.Warnings && OnlyInfo(outcome))

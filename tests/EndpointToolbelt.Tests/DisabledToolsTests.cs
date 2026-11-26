@@ -232,12 +232,14 @@ public class DisabledToolsTests : IDisposable
     [Fact]
     public void Every_tool_has_exactly_one_policy_name_and_every_name_one_tool()
     {
-        var names = ToolCatalog.All.Select(t => t.PolicyName).ToList();
-        Assert.Equal(22, names.Count);
+        // Retry work apps and settings is the one tool no policy name switches off.
+        var names = ToolCatalog.All.Where(t => t.Button != RetryTool.Button).Select(t => t.PolicyName).ToList();
+        Assert.Equal(23, names.Count);
+        Assert.DoesNotContain(ToolCatalog.ByButton(RetryTool.Button).PolicyName, ToolPolicy.AllTools);
         Assert.Equal(names.Count, names.Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.Equal(ToolPolicy.AllTools.OrderBy(n => n, StringComparer.Ordinal), names.OrderBy(n => n, StringComparer.Ordinal));
         // The service tools by their contract action names, the app tools by names of their own.
-        Assert.All(ToolCatalog.All.Where(t => t.InService), t => Assert.Contains(t.Action.Value, ToolPolicy.ServiceTools));
+        Assert.All(ToolCatalog.All.Where(t => t.InService && t.Button != RetryTool.Button), t => Assert.Contains(t.Action.Value, ToolPolicy.ServiceTools));
         Assert.All(ToolCatalog.All.Where(t => !t.InService), t => Assert.Contains(t.PolicyName, ToolPolicy.AppTools));
     }
 
@@ -247,21 +249,25 @@ public class DisabledToolsTests : IDisposable
         var off = new[] { "FullReset", "ClearAppCache" };
         Assert.DoesNotContain(ToolCatalog.InGroup(ToolGroup.Apps, off), t => t.Button == "FullResetButton");
         Assert.Equal(ToolCatalog.InGroup(ToolGroup.Apps).Count - 2, ToolCatalog.InGroup(ToolGroup.Apps, off).Count);
-        Assert.Equal("Apps (2)", ToolCatalog.Heading(ToolGroup.Apps, off));
-        Assert.StartsWith("2 tools", ToolRuns.GroupSummary(ToolGroup.Apps, null, off), StringComparison.Ordinal);
-        Assert.StartsWith("4 tools", ToolRuns.GroupSummary(ToolGroup.Apps, null), StringComparison.Ordinal);
+        Assert.Equal("Apps (3)", ToolCatalog.Heading(ToolGroup.Apps, off));
+        Assert.StartsWith("3 tools", ToolRuns.GroupSummary(ToolGroup.Apps, null, off), StringComparison.Ordinal);
+        Assert.StartsWith("5 tools", ToolRuns.GroupSummary(ToolGroup.Apps, null), StringComparison.Ordinal);
         Assert.Contains(ToolCatalog.Search("reset"), t => t.Button == "FullResetButton");
         Assert.DoesNotContain(ToolCatalog.Search("reset", off), t => t.Button == "FullResetButton");
-        Assert.Equal(20, ToolCatalog.Search("", off).Count);
+        Assert.Equal(22, ToolCatalog.Search("", off).Count);
     }
 
     [Fact]
     public void A_group_whose_tools_are_all_off_shows_no_tile()
     {
-        var off = ToolCatalog.InGroup(ToolGroup.Apps).Select(t => t.PolicyName.ToLowerInvariant()).ToArray();
-        Assert.False(ToolCatalog.GroupOffered(ToolGroup.Apps, off));
-        Assert.True(ToolCatalog.GroupOffered(ToolGroup.SignIn, off));
-        Assert.True(ToolCatalog.GroupOffered(ToolGroup.Apps, null));
+        var off = ToolCatalog.InGroup(ToolGroup.SignIn).Select(t => t.PolicyName.ToLowerInvariant()).ToArray();
+        Assert.False(ToolCatalog.GroupOffered(ToolGroup.SignIn, off));
+        Assert.True(ToolCatalog.GroupOffered(ToolGroup.Apps, off));
+        Assert.True(ToolCatalog.GroupOffered(ToolGroup.SignIn, null));
+        // Apps always keeps its tile: Retry work apps and settings cannot be switched off.
+        var all = ToolPolicy.AllTools.ToArray();
+        Assert.True(ToolCatalog.GroupOffered(ToolGroup.Apps, all));
+        Assert.Equal("Apps (1)", ToolCatalog.Heading(ToolGroup.Apps, all));
     }
 
     [Fact]

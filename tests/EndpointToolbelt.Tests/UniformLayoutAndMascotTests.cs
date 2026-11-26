@@ -654,8 +654,8 @@ public class UniformLayoutAndMascotTests
             // A tool's detail opens in place with Back, at every size.
             MainWindowPagesTests.Call(window, "OpenTool", ToolCatalog.ByButton("TeamsCacheButton"), true);
             Assert.Equal(Visibility.Visible, MainWindowPagesTests.Get<DockPanel>(window, "ItBackBar").Visibility);
-            Assert.Equal("Back to Sign-in & Microsoft 365", AutomationProperties.GetName(MainWindowPagesTests.Get<Button>(window, "ItBackButton")));
-            Assert.Equal("For IT support · Sign-in & Microsoft 365", MainWindowPagesTests.Get<TextBlock>(window, "ToolDetailGroup").Text);
+            Assert.Equal("Back to Microsoft 365", AutomationProperties.GetName(MainWindowPagesTests.Get<Button>(window, "ItBackButton")));
+            Assert.Equal("For IT support · Microsoft 365", MainWindowPagesTests.Get<TextBlock>(window, "ToolDetailGroup").Text);
             // Opened from a problem page, the detail says which problem suggested it instead of the intro.
             MainWindowPagesTests.Call(window, "ShowProblem", Problem.CantSignIn, false);
             var row = ((System.Collections.Generic.IEnumerable<ToolRowView>)MainWindowPagesTests.Get<ItemsControl>(window, "ProblemTools").ItemsSource).First();
@@ -670,7 +670,7 @@ public class UniformLayoutAndMascotTests
     [Fact]
     public void Only_the_tools_no_problem_page_offers_say_to_use_them_when_IT_support_asks()
     {
-        Assert.Equal(new[] { "ClearCacheButton", "LogsButton", "FullResetButton", "PortalButton", "BackupKeyButton", "RepairWuButton" },
+        Assert.Equal(new[] { "ClearCacheButton", "LogsButton", "FullResetButton", "PortalButton", "CheckDefenderButton", "BackupKeyButton", "RepairWuButton" },
             ToolCatalog.All.Where(ToolCatalog.ForItOnly).Select(t => t.Button));
         Assert.EndsWith(ToolCatalog.ItOnlyNote, ToolCatalog.ByButton("FullResetButton").Line);
         Assert.DoesNotContain("IT support asks", ToolCatalog.ByButton("TeamsCacheButton").Line);
@@ -735,6 +735,19 @@ public class UniformLayoutAndMascotTests
             Assert.Equal(new Thickness(0, 0, (double)app.FindResource("MascotSize") + (double)app.FindResource("SpaceM"), 0), (Thickness)app.FindResource("BesideMascot"));
             Assert.Equal(app.FindResource("CardRadius"), ((Style)app.FindResource("Card")).Setters.OfType<Setter>().Single(s => s.Property == Border.CornerRadiusProperty).Value);
         });
+    }
+
+    [Fact]
+    public void Every_check_box_takes_the_themes_text_colour()
+    {
+        // WPF's own check box style sets the system text colour: without a theme brush the label is dark
+        // grey on the dark theme's background.
+        var folder = Path.Combine(EngineHarness.RepositoryRoot(), "src", "EndpointToolbelt.App");
+        var boxes = Directory.GetFiles(folder, "*.xaml", SearchOption.AllDirectories)
+            .SelectMany(file => Regex.Matches(File.ReadAllText(file), @"<CheckBox\b[^>]*>").Cast<Match>().Select(m => (file, tag: m.Value)))
+            .ToList();
+        Assert.NotEmpty(boxes);
+        Assert.All(boxes, b => Assert.Matches(@"Foreground=""\{DynamicResource \w+\}""", b.tag));
     }
 }
 

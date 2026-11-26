@@ -374,7 +374,7 @@ public class WindowRescueTests
             if (query != "window") { Assert.Equal(WindowRescue.Name, ToolCatalog.Search(query).First().Name); }
         }
         var tool = ToolCatalog.ByButton("WindowBackButton");
-        Assert.Equal(ToolGroup.WindowsSecurity, tool.Group);
+        Assert.Equal(ToolGroup.Windows, tool.Group);
         Assert.True(tool.OpensPage);
         Assert.False(tool.InService);
     }

@@ -317,6 +317,36 @@ public class EngineWuCodeKnowledgeTests
     }
 
     [Fact]
+    public void Routes_the_common_errors_page_codes_by_the_cause_Microsoft_names()
+    {
+        // Component store damage takes the system file repair; a network path problem never does.
+        foreach (var code in new[] { "0x800f0831", "0x80073701", "0x8007371b", "0x80070570", "0x800f0825" })
+        {
+            Assert.Contains(code, WuCodes.ServicingCodes);
+            Assert.DoesNotContain(code, WuCodes.DeliveryCodes);
+        }
+        foreach (var code in new[] { "0x80072efd", "0x80072efe", "0x80d02002", "0x8024401b", "0x80072f8f", "0x80200053" })
+        {
+            Assert.Contains(code, WuCodes.DeliveryCodes);
+            Assert.DoesNotContain(code, WuCodes.ServicingCodes);
+        }
+        // No code is in two route groups.
+        var sets = new[] { WuCodes.ServicingCodes, WuCodes.TxLogCodes, WuCodes.SpaceCodes, WuCodes.SourceCodes, WuCodes.DeliveryCodes, WuCodes.PolicyCodes, WuCodes.NoiseCodes };
+        var all = sets.SelectMany(s => s).ToList();
+        Assert.Equal(all.Count, all.Distinct().Count());
+        // Explained only (no route): their causes need IT, a restart or nothing.
+        foreach (var code in new[] { "0x800f0821", "0x80242006", "0x80242014", "0x80246017", "0x8024000e", "0x8024a10a", "0x8024d009" })
+        {
+            Assert.NotNull(CodeKnowledge.Get(code));
+            Assert.DoesNotContain(code, WuCodes.KnownCodes);
+        }
+        // 0x800F0922 keeps the space route and names the licensing token fix for IT, never for the user.
+        Assert.Contains("0x800f0922", WuCodes.SpaceCodes);
+        Assert.Contains(@"System32\spp", CodeKnowledge.Get("0x800f0922").Support, StringComparison.Ordinal);
+        Assert.DoesNotContain("spp", CodeKnowledge.Get("0x800f0922").NextStep, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Groups_the_policy_codes_apart_from_every_repair_route_each_with_the_policy_it_names()
     {
         Assert.Equal(new[] { "0x800f0907", "0x8024002e", "0x8024002f" }, WuCodes.PolicyCodes.OrderBy(c => c, StringComparer.Ordinal));

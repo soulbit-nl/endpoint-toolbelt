@@ -339,6 +339,18 @@ public sealed class AppSettings
     /// <summary>The run whose result was last shown, so a result is shown once after a reopen.</summary>
     [DataMember] public string LastShownRunId { get; set; }
 
+    /// <summary>When the app last read the version feed (UTC), so it looks at most once a day.</summary>
+    [DataMember] public DateTime? UpdateCheckedUtc { get; set; }
+
+    /// <summary>The newest version the feed named at that time; checked again before it is shown.</summary>
+    [DataMember] public UpdateOffer UpdateOffer { get; set; }
+
+    /// <summary>The user's own choice for the version check (About's check box); null: the device's value decides.</summary>
+    [DataMember] public bool? UpdateCheckOn { get; set; }
+
+    /// <summary>The version the start-up notice was last shown for, so it shows once per version.</summary>
+    [DataMember] public string UpdateNoticeShownFor { get; set; }
+
     public static AppSettings Load(string path = null)
     {
         try

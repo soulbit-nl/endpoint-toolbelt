@@ -231,6 +231,38 @@ internal sealed class FakeEventLog : IEventLogReader
         Events(logName).Where(e => (eventId <= 0 || e.Id == eventId) && (e.TimeCreatedUtc is not DateTime t || t >= sinceUtc)).ToList();
 }
 
+/// <summary>A Microsoft Defender operational log of the test's own: its events, its oldest event and its accounts.</summary>
+internal sealed class FakeDefenderEvents : IDefenderEventSource
+{
+    public List<DefenderEvent> Events { get; } = new();
+
+    /// <summary>Thrown by Read (a log that cannot be read).</summary>
+    public Exception Fails { get; set; }
+
+    public DateTime? Oldest { get; set; }
+
+    /// <summary>Account names and their SIDs; a name that is not here cannot be resolved.</summary>
+    public Dictionary<string, string> Accounts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<DefenderEvent> Read(IReadOnlyList<int> ids, DateTime sinceUtc, int max)
+    {
+        if (Fails != null) { throw Fails; }
+        return Events.Where(e => ids.Contains(e.Id) && e.TimeCreatedUtc >= sinceUtc).OrderByDescending(e => e.TimeCreatedUtc).Take(max).ToList();
+    }
+
+    public DateTime? OldestUtc() => Oldest;
+
+    public string SidOf(string account) => Accounts.TryGetValue(account, out var sid) ? sid : null;
+
+    /// <summary>The name of a SID; null unless <see cref="ResolveNames"/> is on (as when Windows cannot look it up).</summary>
+    public string NameOf(string sid) => Names.TryGetValue(sid ?? "", out var name) ? name : ResolveNames ? Accounts.FirstOrDefault(a => string.Equals(a.Value, sid, StringComparison.OrdinalIgnoreCase)).Key : null;
+
+    /// <summary>Names a SID is given back as, before <see cref="Accounts"/> (a name that resolves to another SID).</summary>
+    public Dictionary<string, string> Names { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool ResolveNames { get; set; }
+}
+
 internal sealed class FakeDeviceInfo : IDeviceInfo
 {
     public Func<BitLockerVolumeInfo> BitLocker { get; set; } = () => throw new BitLockerUnavailableException(BitLockerProblem.NotAvailable);
@@ -328,6 +360,8 @@ internal sealed class EngineHarness
             ProcessControl = ProcessControl,
             TaskScheduler = TaskScheduler,
             WindowsUpdate = WindowsUpdate,
+            // Never this machine's Microsoft Defender log.
+            DefenderEvents = DefenderEvents,
             // Never this machine's network adapters.
             Network = Network,
             LeaseRenewer = Network,
@@ -376,6 +410,7 @@ internal sealed class EngineHarness
     public FakeProcessControl ProcessControl { get; } = new();
     public FakeTaskScheduler TaskScheduler { get; } = new();
     public FakeWindowsUpdate WindowsUpdate { get; } = new();
+    public FakeDefenderEvents DefenderEvents { get; } = new();
     public FakeNetwork Network { get; } = new();
     public FakeModernApps ModernApps { get; } = new();
 

@@ -185,19 +185,17 @@ public static class DeviceReport
         return "UTC" + TimeText.Offset(offset) + " (" + (daylight ? zone.DaylightName : zone.StandardName) + ")";
     }
 
-    /// <param name="status">The service's status, or null when the service could not be reached.</param>
-    /// <param name="zone">The user's time zone (the local one when null), named in the report.</param>
-    /// <param name="firstLine">
-    /// The first-line facts (last restart, join type, MDM enrollment ID, network), right below
-    /// the time zone, before the device's own facts; null leaves them out.
-    /// </param>
-    public static string Build(DeviceFacts facts, DsregInfo dsreg, IEnumerable<HealthResult> health, IEnumerable<string> history, DateTimeOffset generated, string productVersion,
-        Protocol.StatusInfo status = null, TimeZoneInfo zone = null, FirstLineFacts firstLine = null)
+    /// <summary>
+    /// The lines above the health checks, each "Label : text": when and by which version the report
+    /// was made, the time zone, the first-line facts, then the device, the user, the tenant and
+    /// the service with its last run. An empty line separates the first-line facts from the device.
+    /// </summary>
+    internal static List<string> HeaderLines(DeviceFacts facts, DsregInfo dsreg, DateTimeOffset generated, string productVersion,
+        Protocol.StatusInfo status, TimeZoneInfo zone, FirstLineFacts firstLine)
     {
         zone ??= TimeZoneInfo.Local;
         var lines = new List<string>
         {
-            "===== ENDPOINT TOOLBELT - DEVICE REPORT =====",
             string.Format(CultureInfo.InvariantCulture, "Generated : {0} (" + ProductInfo.DisplayName + " {1})", generated.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture), productVersion),
             "Time zone : " + TimeText.ZoneLabel(zone, generated.UtcDateTime),
         };
@@ -224,8 +222,7 @@ public static class DeviceReport
             lines.Add(string.Format(CultureInfo.InvariantCulture, "Last run  : {0}, {1} (run ID {2})", ActionText.Name(last),
                 LastRunWords(status), string.IsNullOrEmpty(status.LastResultRunId) ? "unknown" : status.LastResultRunId));
         }
-        lines.Add("");
-        lines.Add("----- HEALTH CHECKS -----");
+        return lines;
 
         static string LastRunWords(Protocol.StatusInfo s)
         {
@@ -237,6 +234,22 @@ public static class DeviceReport
             }
             return RunWords.Service(code);
         }
+    }
+
+    /// <param name="status">The service's status, or null when the service could not be reached.</param>
+    /// <param name="zone">The user's time zone (the local one when null), named in the report.</param>
+    /// <param name="firstLine">
+    /// The first-line facts (last restart, join type, MDM enrollment ID, network), right below
+    /// the time zone, before the device's own facts; null leaves them out.
+    /// </param>
+    public static string Build(DeviceFacts facts, DsregInfo dsreg, IEnumerable<HealthResult> health, IEnumerable<string> history, DateTimeOffset generated, string productVersion,
+        Protocol.StatusInfo status = null, TimeZoneInfo zone = null, FirstLineFacts firstLine = null)
+    {
+        zone ??= TimeZoneInfo.Local;
+        var lines = new List<string> { "===== ENDPOINT TOOLBELT - DEVICE REPORT =====" };
+        lines.AddRange(HeaderLines(facts, dsreg, generated, productVersion, status, zone, firstLine));
+        lines.Add("");
+        lines.Add("----- HEALTH CHECKS -----");
         // A summary first; then every detailed check on one line. The advice for the user
         // stays in the window: the report is for IT support.
         lines.AddRange(HealthSummaryLines(health));

@@ -194,7 +194,7 @@ public class MenuTests
         var xaml = MainWindow();
         var it = Named(xaml, "ItPage");
         foreach (var name in new[] { "ToolSearch", "ToolSearchLabel", "ToolSearchResult", "ItBackButton", "CategoryTiles", "ToolList", "ToolDetail", "ToolDetailTitle",
-            "FactTime", "FactChanges", "ToolLastRunText", "ToolLastRunLink", "DetailStatusHost", "RecentRuns", "RunsFolderLink", "ReportButton", "PackageButton" })
+            "FactTime", "FactChanges", "ToolLastRunText", "ToolLastRunLink", "DetailStatusHost", "RecentRuns", "RunsFolderLink", "ReportButton", "HtmlReportButton", "PackageButton" })
         {
             Assert.Contains(it.Descendants(), e => (string)e.Attribute(X + "Name") == name);
         }
@@ -205,7 +205,7 @@ public class MenuTests
         var main = Named(xaml, "ItMain").Descendants().Select(e => (string)e.Attribute(X + "Name")).Where(n => n != null).ToList();
         Assert.True(main.IndexOf("ToolSearch") < main.IndexOf("CategoryTiles") && main.IndexOf("CategoryTiles") < main.IndexOf("ToolList"));
         var tiles = Named(xaml, "CategoryTiles").Elements().Where(e => e.Name.LocalName == "Button").Select(e => (string)e.Attribute(X + "Name")).ToList();
-        Assert.Equal(new[] { "AppsTile", "SignInTile", "WindowsTile", "NetworkTile" }, tiles);
+        Assert.Equal(new[] { "AppsTile", "SignInTile", "MicrosoftTile", "WindowsTile", "DefenderTile", "NetworkTile" }, tiles);
         Assert.All(tiles, t => Assert.Contains(xaml.Descendants(), e => (string)e.Attribute(X + "Name") == t + "Summary"));
         // The thirteen tools: each has its one button on the detail page, in their fixed order and groups,
         // named by the tool, with no access key, hidden until shown; no text in the XAML (it comes from the catalog).
@@ -218,8 +218,8 @@ public class MenuTests
         Assert.Equal(new[] { "FullResetButton", "RepairWuButton" }, buttons.Where(b => (string)b.Attribute("Style") == "{StaticResource DangerPrimaryRunButton}").Select(b => (string)b.Attribute(X + "Name")));
         Assert.All(buttons.Where(b => (string)b.Attribute("Style") != "{StaticResource DangerPrimaryRunButton}"), b => Assert.Equal("{StaticResource PrimaryRunButton}", (string)b.Attribute("Style")));
         Assert.Equal(new[] { "FullResetButton", "RepairWuButton" }, ToolCatalog.All.Where(t => t.Heavy).Select(t => t.Button));
-        Assert.Equal(22, ToolCatalog.All.Count);
-        Assert.Equal(new[] { 4, 7, 7, 4 }, new[] { ToolGroup.Apps, ToolGroup.SignIn, ToolGroup.WindowsSecurity, ToolGroup.NetworkStorage }.Select(g => ToolCatalog.InGroup(g).Count));
+        Assert.Equal(24, ToolCatalog.All.Count);
+        Assert.Equal(new[] { 5, 2, 5, 4, 4, 4 }, new[] { ToolGroup.Apps, ToolGroup.SignIn, ToolGroup.Microsoft365, ToolGroup.Windows, ToolGroup.Defender, ToolGroup.NetworkStorage }.Select(g => ToolCatalog.InGroup(g).Count));
         foreach (var tool in ToolCatalog.All)
         {
             Assert.Single(xaml.Descendants(), e => (string)e.Attribute(X + "Name") == tool.Button);
@@ -384,8 +384,10 @@ public class MenuTests
         Assert.Equal("Re_load the app list", Content("ReloadAppsButton"));
         Assert.Equal("M_y app is not in this list", Content("NotListedButton"));
         Assert.Equal("Check this app aga_in", Content("CheckAgainButton"));
-        Assert.Equal("_View device report", Content("ReportButton"));
-        Assert.Equal("Create support pac_kage", Content("PackageButton"));
+        Assert.Equal("_View report", Content("ReportButton"));
+        // The HTML export has no access key: no letter of its label is free.
+        Assert.Equal("Export HTML", Content("HtmlReportButton"));
+        Assert.Equal("Support pac_kage", Content("PackageButton"));
         Assert.Equal("Searc_h tools", Content("ToolSearchLabel"));
         Assert.Equal("Copy details for I_T", Content("CopyTicketButton"));
         Assert.Equal("Ch_eck this PC again", Content("RefreshButton"));
@@ -421,8 +423,8 @@ public class MenuTests
         Assert.Contains(ToolCatalog.Search("Company Portal"), t => t.Button == "ComplianceButton");
         Assert.Equal(new[] { "BackupKeyButton", "ComplianceButton" }, ToolCatalog.Search("BitLocker").Select(t => t.Button));
         Assert.Equal("ComplianceButton", ToolCatalog.Search("not compliant").First().Button);
-        Assert.Equal(22, ToolCatalog.Search("").Count);
-        Assert.Equal(22, ToolCatalog.Search("   ").Count);
+        Assert.Equal(24, ToolCatalog.Search("").Count);
+        Assert.Equal(24, ToolCatalog.Search("   ").Count);
         Assert.Empty(ToolCatalog.Search("no such tool"));
         Assert.Contains(ToolCatalog.Search("sign-in"), t => t.Button == "RefreshSignInButton");
     }
