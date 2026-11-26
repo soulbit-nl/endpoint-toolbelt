@@ -180,6 +180,34 @@ if ($PackageOnly) {
     Write-Host "    staged $($binSources.Count) files to $binStaged"
 }
 
+# 2c. Installer art ---------------------------------------------------------------------------------
+# Bit on the installer's screens, drawn by the app's own helper character through one test
+# (InstallerArtTests), so the installer never shows another Bit than the app. Made also with
+# -SkipTests: the MSI needs the bitmaps.
+Write-Step 'Installer art'
+$artStaged = Join-Path $staging 'installer-art'
+$artFiles = @('bit-working.bmp', 'bit-done.bmp', 'bit-idle.bmp', 'bit-error.bmp', 'bit-attention.bmp')
+if ($PackageOnly) {
+    $missing = @($artFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $artStaged $_) -PathType Leaf) })
+    if ($missing.Count -gt 0) { throw "No staged installer art in ${artStaged}: $($missing -join ', ')" }
+    Write-Host "    using the staged installer art in $artStaged"
+} elseif ($solutions.Count -ne 1 -or $Configuration -ne 'Release') {
+    Write-Skip 'no Release build, so no MSI'
+} else {
+    if (Test-Path -LiteralPath $artStaged) { Remove-Item -LiteralPath $artStaged -Recurse -Force }
+    $null = New-Item -ItemType Directory -Path $artStaged -Force
+    $testProject = Join-Path $root 'tests\EndpointToolbelt.Tests\EndpointToolbelt.Tests.csproj'
+    $env:ETB_INSTALLER_ART = $artStaged
+    try {
+        Invoke-Native dotnet @('test', $testProject, '-c', $Configuration, '--no-build', '-nologo', '--filter', 'FullyQualifiedName~EndpointToolbelt.Tests.InstallerArtTests')
+    } finally {
+        Remove-Item -Path Env:\ETB_INSTALLER_ART -ErrorAction SilentlyContinue
+    }
+    $missing = @($artFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $artStaged $_) -PathType Leaf) })
+    if ($missing.Count -gt 0) { throw "The installer art was not made: $($missing -join ', ')" }
+    Write-Host "    staged $($artFiles.Count) bitmaps to $artStaged"
+}
+
 # Script files the product never installs; the staging and the MSI are checked for them.
 $scriptExtensions = @('.ps1', '.psm1', '.psd1', '.ps1xml')
 
@@ -221,7 +249,7 @@ if (Test-Path -LiteralPath $wixproj) {
     # Never incremental: a changed version alone does not make MSBuild rebuild the package, and
     # an MSI with an old version and product code would install as a repair, not an upgrade.
     Invoke-Native dotnet @('build', $wixproj, '-c', $Configuration, '-nologo', '--no-incremental', '-o', $msiOut,
-        "-p:ProductVersion=$version", "-p:EngineDir=$engineStaged", "-p:BinDir=$binStaged")
+        "-p:ProductVersion=$version", "-p:EngineDir=$engineStaged", "-p:BinDir=$binStaged", "-p:ArtDir=$artStaged")
     $msis = @(Get-ChildItem -LiteralPath $msiOut -Filter '*.msi' -File)
     if ($msis.Count -ne 1) { throw "Expected exactly one MSI in $msiOut, found $($msis.Count)." }
     $target = Join-Path $artifacts ("EndpointToolbelt-{0}-x64.msi" -f $version)

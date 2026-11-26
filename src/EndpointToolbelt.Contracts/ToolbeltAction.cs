@@ -26,6 +26,9 @@ public enum ToolbeltAction
 
     // The read-only Windows Update check. It changes nothing on the device.
     CheckWindowsUpdate = 12,
+
+    // The read-only check of what Microsoft Defender detected or blocked. It changes nothing on the device.
+    CheckDefenderBlocks = 13,
 }
 
 /// <summary>Static rules per action. The service enforces these for every caller.</summary>
@@ -98,6 +101,9 @@ public static class ActionCatalog
         // Reads the update history, failure events, policies, service start types, the restart
         // flags and the free space; changes nothing. It shares the read-only limit of the app diagnosis.
         [ToolbeltAction.CheckWindowsUpdate] = new(ToolbeltAction.CheckWindowsUpdate, requiresConfirmation: false, affectsAllSessions: false, TimeSpan.FromMinutes(5), producesFile: false, countsTowardRateLimit: false, readOnly: true),
+        // Reads the block and detection events of the Microsoft Defender operational log; changes
+        // nothing. It shares the read-only limit of the app diagnosis.
+        [ToolbeltAction.CheckDefenderBlocks] = new(ToolbeltAction.CheckDefenderBlocks, requiresConfirmation: false, affectsAllSessions: false, TimeSpan.FromMinutes(5), producesFile: false, countsTowardRateLimit: false, readOnly: true),
     };
 
     public static IReadOnlyCollection<ToolbeltAction> All => Actions.Keys;

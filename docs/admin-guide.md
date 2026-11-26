@@ -41,8 +41,19 @@ diagnosis, targeted repairs and a handover to IT. Plainly:
 | Intune sync, downloading app content, backing up the recovery key to Microsoft Entra ID | Needs the service to be reachable |
 | Windows Update, Defender definitions, Sync clock | Needs a reachable source, sometimes one inside the organization |
 
-The app has no server of its own and sends no telemetry; its only network requests are the
-connection checks.
+The app has no telemetry and no back end. Its network requests are the connection checks and, at
+most once a day, the check for a newer version: one GET of a static file,
+`https://soulbit.app/endpoint-toolbelt/latest.json`, made by the app as the signed-in user. It carries no
+data about the device or the user; the site sees what every web server sees (the device's public
+internet address, the time, and "Endpoint Toolbelt" as the user agent). Through an authenticating
+proxy, the user's Windows sign-in goes to that proxy only, as for the user's other apps. Off means
+no request by itself; **Check now** in About is the user's own click and makes one request also then.
+It is decided in this order: the policy value `UpdateCheck` = 0 switches it off for every user,
+cannot be changed in the app and hides Check now, so no request is made at all (deploy it before the
+version with the check if you do not want the request at all); otherwise the user's own choice ("Check for new versions at
+start-up" in About); otherwise the device's value from the installer (the same check box on the
+first screen of an install a person starts, or `UPDATECHECK=0` on a silent install); otherwise on. The app never downloads or installs a new
+version: it only says one is available, and you deploy it.
 
 ## Requirements
 
@@ -67,6 +78,18 @@ msiexec /i EndpointToolbelt-<version>-x64.msi /qn SUPPORTTEXT="SoulBit Service D
 :: Uninstall (silent)
 msiexec /x {ProductCode} /qn
 ```
+
+Started by hand (a double-click), an install shows "Endpoint Toolbelt is ready to install." with
+the check box "Check for new versions at start-up" (checked) and Install while nobody chose for the
+device yet: on a first install, and on an upgrade of a device without that choice. Install writes
+the choice for the device (`UPDATECHECK` 1 or 0, and a mark in
+`HKLM\SOFTWARE\EndpointToolbelt\Setup` that every user may read, so the screen does not ask again).
+Then come its progress and "Endpoint Toolbelt is installed." with Finish; an upgrade of a device
+that has the choice starts at the progress. `/qn` shows nothing, as Intune runs it. The setup
+never starts the app itself (from an elevated prompt the app would then run as that
+administrator): the user opens it from the Start menu. An administrative
+install (`msiexec /a`) only unpacks the package into a folder and ends on "Endpoint Toolbelt is
+unpacked."
 
 These are `cmd` command lines. In PowerShell, quote the product code (`'{ProductCode}'`)
 and use `$env:TEMP` instead of `%TEMP%`.
@@ -147,7 +170,8 @@ next action without a restart.
 | `UserRateLimitPerHour` | `USERRATELIMIT` | number, 1-60 | 20 | Maximum actions per user per hour that change the device; an action counts once the service accepts it. Creating a support package, Check Windows Update and the app diagnosis do not count. Cannot be switched off |
 | `AllowMachineWideOnMultiSession` | `ALLOWMULTISESSIONRESET` | number, 0 or 1 | 1 | 0 blocks Full IME reset, Repair Windows Update, Free up disk space and Get a new IP address while other users are signed in (they are refused anyway when the sessions cannot be counted) |
 | `TrustedServiceCaller` | none (policy key only) | a Windows service name: letters, digits and `_.-`, at most 80 characters | empty | Names one service of the organization that may call the service on IT support's behalf over its own pipe, with the same actions, confirmations and limits as a user. Off when empty. See [Trusted service caller](architecture.md#trusted-service-caller) |
-| `DisabledTools` | none (policy key only) | `REG_MULTI_SZ` of tool names (a `REG_SZ` with names separated by commas or semicolons is read too), case-insensitive | empty | Switches single tools of For IT support off for the signed-in user. The app hides them (group lists, tile counts, search, problem paths, Home's step, fix links) and the service refuses a service tool to a user with `ToolSwitchedOff` (24) and event 1018; the trusted service caller may still run it. Service tools by their action names: `ClearAppCache`, `FullReset`, `UpdateDefender`, `BackupRecoveryKey`, `SyncClock`, `CheckWindowsUpdate`, `RepairWU`, `FreeDiskSpace`, `RenewIpAddress`. App tools: `OpenImeLogs`, `ResetCompanyPortal`, `RefreshSignIn`, `ResetSignInCache`, `ClearTeamsCache`, `WordSafeMode`, `ExcelSafeMode`, `OutlookSafeMode`, `PowerPointSafeMode`, `CheckConnections`, `BringWindowBack`, `CheckCompliance`, `ResetOneDrive`; these run as the user, so the policy hides them but cannot stop a user from doing the same by hand. An unknown name is ignored and logged once. Retry work apps and settings, the support package and the app diagnosis cannot be switched off. |
+| `DisabledTools` | none (policy key only) | `REG_MULTI_SZ` of tool names (a `REG_SZ` with names separated by commas or semicolons is read too), case-insensitive | empty | Switches single tools of For IT support off for the signed-in user. The app hides them (group lists, tile counts, search, problem paths, Home's step, fix links) and the service refuses a service tool to a user with `ToolSwitchedOff` (24) and event 1018; the trusted service caller may still run it. Service tools by their action names: `ClearAppCache`, `FullReset`, `UpdateDefender`, `CheckDefenderBlocks`, `BackupRecoveryKey`, `SyncClock`, `CheckWindowsUpdate`, `RepairWU`, `FreeDiskSpace`, `RenewIpAddress`. App tools: `OpenImeLogs`, `ResetCompanyPortal`, `RefreshSignIn`, `ResetSignInCache`, `ClearTeamsCache`, `WordSafeMode`, `ExcelSafeMode`, `OutlookSafeMode`, `PowerPointSafeMode`, `CheckConnections`, `BringWindowBack`, `CheckCompliance`, `ResetOneDrive`; these run as the user, so the policy hides them but cannot stop a user from doing the same by hand. An unknown name is ignored and logged once. Retry work apps and settings, the support package and the app diagnosis cannot be switched off; Retry stays in For IT's group Apps too. |
+| `UpdateCheck` | `UPDATECHECK` | `REG_DWORD` (or `REG_SZ`), 0 or 1 | 1 (on) | `0` switches off the check for a newer version: the app then does not read `https://soulbit.app/endpoint-toolbelt/latest.json` by itself, shows no notice at start-up and names no newer version in About; only About's Check now, the user's own click, reads it once. As a policy value it locks the check off for every user and hides About's check box and Check now, so no request is made at all. As the installer's value (`UPDATECHECK=0`, kept on an upgrade; also written when the check box on the first screen of an install a person starts is cleared) it is the device's default: a user's own choice in About comes before it. With the check on, users see once per new version a notice with one link, "Release notes", to the product's page on soulbit.app. Any other value, or no value, leaves it on (at most once a day, as the signed-in user). The app never downloads or installs a version itself. |
 
 - Numbers may be `REG_DWORD` or `REG_SZ` (for example `"8"`); text values are `REG_SZ`.
 - An empty value counts as not set: the built-in default applies.

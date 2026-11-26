@@ -82,6 +82,11 @@ public static class SettingNames
             var setting = thumbprint >= 0 && thumbprint < segments.Count - 1 ? " (" + Words(last, capitalFirst: false) + ")" : "";
             return store + " certificate" + (thumbprint >= 0 ? " " + ShortThumbprint(segments[thumbprint]) : "") + setting;
         }
+        // The Office CSP's installation of Microsoft 365 Apps, which a user knows as Office.
+        if (segments[0].Equals("Office", StringComparison.OrdinalIgnoreCase) && segments.Count > 1 && segments[1].Equals("Installation", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Installing Office (Microsoft 365 Apps)";
+        }
         if (segments.Count > 1 && Areas.TryGetValue(segments[0], out var area))
         {
             // Windows Hello's PIN rules read as "Windows Hello PIN: lowercase letters".

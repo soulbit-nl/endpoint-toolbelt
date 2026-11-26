@@ -19,6 +19,7 @@ public static class ActionText
         ToolbeltAction.DiagnoseApps => "App diagnosis",
         ToolbeltAction.RenewIpAddress => IpRenewal.Name,
         ToolbeltAction.CheckWindowsUpdate => WuCheck.Name,
+        ToolbeltAction.CheckDefenderBlocks => DefenderCheck.Name,
         _ => action.ToString(),
     };
 

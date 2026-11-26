@@ -27,12 +27,13 @@
       the installed one instead of installing beside it. Every other ICE runs.
     -->
     <SuppressIces>ICE43;ICE57;ICE61</SuppressIces>
-    <DefineConstants>ProductVersion=$(ProductVersion);BinDir=$(BinDir);EngineDir=$(EngineDir);AssetsDir=$(MSBuildThisFileDirectory)..\src\EndpointToolbelt.App\Assets</DefineConstants>
+    <DefineConstants>ProductVersion=$(ProductVersion);BinDir=$(BinDir);EngineDir=$(EngineDir);ArtDir=$(ArtDir);AssetsDir=$(MSBuildThisFileDirectory)..\src\EndpointToolbelt.App\Assets</DefineConstants>
   </PropertyGroup>
 
   <Target Name="CheckInputs" BeforeTargets="Build">
     <Error Condition="'$(ProductVersion)' == ''" Text="ProductVersion is required (build\build.ps1 passes it from Directory.Build.props)." />
     <Error Condition="'$(BinDir)' == '' or !Exists('$(BinDir)\EndpointToolbelt.Service.exe')" Text="BinDir must name the staged binaries (artifacts\staging\bin)." />
     <Error Condition="'$(EngineDir)' == '' or !Exists('$(EngineDir)\ImeLogPatterns.json')" Text="EngineDir must name the staged engine data (artifacts\staging\Engine)." />
+    <Error Condition="'$(ArtDir)' == '' or !Exists('$(ArtDir)\bit-done.bmp')" Text="ArtDir must name the staged installer art (artifacts\staging\installer-art, made by build\build.ps1)." />
   </Target>
 </Project>

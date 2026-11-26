@@ -196,7 +196,7 @@ public class OneDriveResetTests
             MainWindowPagesTests.Call(window, "ShowProblem", Problem.OneDriveSync, false);
             reset = Assert.Single((IEnumerable<ToolRowView>)MainWindowPagesTests.Get<ItemsControl>(window, "ProblemTools").ItemsSource);
             Assert.True(reset.RunTarget.IsEnabled);
-            Assert.Equal("Not run yet", reset.ResultText);
+            Assert.Equal("", reset.ResultText);
         });
     }
 

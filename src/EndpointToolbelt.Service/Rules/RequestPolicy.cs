@@ -166,9 +166,12 @@ public static class RequestPolicy
         if (info.ReadOnly && readOnlyLimiter != null && !readOnlyLimiter.TryAcquire(caller.Sid, ReadOnlyRateLimitPerHour))
         {
             // The read-only actions share this limit; the message names the one asked for.
-            return PolicyDecision.Reject(ResultCode.RateLimited, request.Action == ToolbeltAction.CheckWindowsUpdate
-                ? "Check Windows Update and the app diagnosis were run too often in the last hour. Try again later."
-                : "The app diagnosis was run too often in the last hour. Try again later.");
+            return PolicyDecision.Reject(ResultCode.RateLimited, request.Action switch
+            {
+                ToolbeltAction.CheckWindowsUpdate => "Check Windows Update and the app diagnosis were run too often in the last hour. Try again later.",
+                ToolbeltAction.CheckDefenderBlocks => "Check Defender blocks and the other read-only checks were run too often in the last hour. Try again later.",
+                _ => "The app diagnosis was run too often in the last hour. Try again later.",
+            });
         }
         return PolicyDecision.Accept();
     }

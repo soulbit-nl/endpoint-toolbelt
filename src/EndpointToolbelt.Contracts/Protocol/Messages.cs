@@ -203,6 +203,14 @@ public sealed class StatusInfo
     /// leaves it null, and the app then reads the policy value itself.
     /// </summary>
     [DataMember(Order = 31)] public List<string> DisabledTools { get; set; }
+
+    /// <summary>
+    /// The device's value for the app's version check (the policy value <c>UpdateCheck</c>, else the
+    /// installer's <c>UPDATECHECK</c>): false is off. The app cannot read the installer's value
+    /// itself. An addition: an older or unreachable service leaves it null, and the app then makes no
+    /// request unless the user switched the check on.
+    /// </summary>
+    [DataMember(Order = 32)] public bool? UpdateCheck { get; set; }
 }
 
 /// <summary>
@@ -340,6 +348,13 @@ public sealed class ProfileErrorsReadout
     /// older service, and <see cref="System.DateTime.MinValue"/> where the event had no time.
     /// </summary>
     [DataMember(Order = 9)] public List<System.DateTime> SettingTimes { get; set; } = new();
+
+    /// <summary>
+    /// Failed commands on an Office installation (the Office CSP) whose own status on the device says
+    /// it succeeded: the MDM client sends the installation again and logs an error, while Microsoft 365
+    /// Apps is installed. Not counted in <see cref="Errors"/>; 0 from an older service.
+    /// </summary>
+    [DataMember(Order = 10)] public int AlreadySucceeded { get; set; }
 }
 
 /// <summary>The Intune enrollment's scheduled tasks.</summary>

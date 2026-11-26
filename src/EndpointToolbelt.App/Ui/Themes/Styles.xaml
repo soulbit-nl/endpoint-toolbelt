@@ -194,6 +194,19 @@
         </Style.Triggers>
     </Style>
 
+    <!-- A secondary button that shares a row of equal widths: its text wraps to a second line, centred, when the
+         row is narrow, instead of the row breaking (For IT's three report buttons). -->
+    <Style x:Key="RowButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <AccessText Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- An action that changes a lot (Full IME reset, Repair Windows Update): a secondary button with
          a red outline, so it stands out without shouting. The confirmation says the rest. -->
     <Style x:Key="DangerOutlineButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">

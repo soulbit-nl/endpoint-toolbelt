@@ -34,6 +34,8 @@ public static class ActionHandlers
         [nameof(ToolbeltAction.RenewIpAddress)] = new Actions.RenewIpAddressHandler(),
         // The read-only Windows Update check.
         [nameof(ToolbeltAction.CheckWindowsUpdate)] = new Actions.CheckWindowsUpdateHandler(),
+        // The read-only check of what Microsoft Defender detected or blocked.
+        [nameof(ToolbeltAction.CheckDefenderBlocks)] = new Actions.CheckDefenderBlocksHandler(),
     };
 }
 

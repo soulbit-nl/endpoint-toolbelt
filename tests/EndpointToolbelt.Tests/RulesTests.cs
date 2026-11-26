@@ -27,14 +27,16 @@ public class ActionCatalogTests
     public void There_are_exactly_the_nine_button_actions_and_the_read_only_diagnosis()
     {
         var names = Enum.GetNames(typeof(ToolbeltAction)).OrderBy(n => n);
-        Assert.Equal(new[] { "BackupRecoveryKey", "CheckWindowsUpdate", "ClearAppCache", "CollectDiag", "DiagnoseApps", "FreeDiskSpace", "FullReset", "RenewIpAddress", "RepairWU", "RetryAppsAndPolicies", "SyncClock", "UpdateDefender" }, names);
+        Assert.Equal(new[] { "BackupRecoveryKey", "CheckDefenderBlocks", "CheckWindowsUpdate", "ClearAppCache", "CollectDiag", "DiagnoseApps", "FreeDiskSpace", "FullReset", "RenewIpAddress", "RepairWU", "RetryAppsAndPolicies", "SyncClock", "UpdateDefender" }, names);
         // The values a caller sends never change; the diagnosis is a new value, not a reused one.
         Assert.Equal(10, (int)ToolbeltAction.DiagnoseApps);
         // Get a new IP address is value 11.
         Assert.Equal(11, (int)ToolbeltAction.RenewIpAddress);
         // Check Windows Update is value 12.
         Assert.Equal(12, (int)ToolbeltAction.CheckWindowsUpdate);
-        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }, ActionCatalog.All.Select(a => (int)a).OrderBy(v => v));
+        // Check Defender blocks is value 13.
+        Assert.Equal(13, (int)ToolbeltAction.CheckDefenderBlocks);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }, ActionCatalog.All.Select(a => (int)a).OrderBy(v => v));
     }
 
     [Theory]
@@ -103,6 +105,23 @@ public class ConfigLoaderTests
         Assert.False(c.AllowMachineWideOnMultiSession);
     }
 
+    [Theory]
+    // The version check's device value, policy before the installer's UPDATECHECK; on by default.
+    [InlineData(null, null, true)]
+    [InlineData(null, "0", false)]
+    [InlineData(null, "1", true)]
+    [InlineData(0, "1", false)]
+    [InlineData(1, "0", true)]
+    public void UpdateCheck_is_on_unless_policy_or_installer_says_0(object policy, string installer, bool on)
+    {
+        var r = new FakeRegistry();
+        if (policy != null) { r.Policy["UpdateCheck"] = policy; }
+        if (installer != null) { r.Config["UpdateCheck"] = installer; }
+        var c = ConfigLoader.Load(r);
+        Assert.Equal(on, c.UpdateCheck);
+        Assert.Empty(c.Warnings);
+    }
+
     [Fact]
     public void ShowHelperCharacter_is_no_configuration_value_any_more()
     {
@@ -145,9 +164,9 @@ public class ConfigLoaderTests
     public void Only_actions_that_change_the_device_count_toward_the_rate_limit()
     {
         Assert.False(ActionCatalog.Get(ToolbeltAction.CollectDiag).CountsTowardRateLimit);
-        // The read-only diagnosis and the Windows Update check have a limit of their own
-        // instead, and nothing else is read-only.
-        var readOnly = new[] { ToolbeltAction.DiagnoseApps, ToolbeltAction.CheckWindowsUpdate };
+        // The read-only diagnosis, the Windows Update check and the Defender check have a limit
+        // of their own instead, and nothing else is read-only.
+        var readOnly = new[] { ToolbeltAction.DiagnoseApps, ToolbeltAction.CheckWindowsUpdate, ToolbeltAction.CheckDefenderBlocks };
         foreach (var action in readOnly)
         {
             var info = ActionCatalog.Get(action);

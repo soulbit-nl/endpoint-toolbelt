@@ -23,7 +23,7 @@ public class WordingConsistencyTests
     /// <summary>Labels that mean the same on every page, each page with a handler of its own.</summary>
     // "Yes" and "Not tried" answer the question shown above them: the safe-mode question or the handover's
     // "Does it work now?". The two are never shown together (the handover does not ask after a safe-mode tool).
-    private static readonly string[] SameMeaning = { "Cancel", "← Back", "Copy details for IT", "Yes", "Not tried" };
+    private static readonly string[] SameMeaning = { "Cancel", "← Back", "Copy details for IT", "Yes", "Not tried", "✕" };
 
     private static XDocument MainWindowXaml()
     {

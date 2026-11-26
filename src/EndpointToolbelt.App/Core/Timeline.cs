@@ -75,6 +75,10 @@ public sealed class Timeline
                 // The check's verdict and facts as tokens; never a server, a path or a name.
                 Lines.Add(Time(r) + WuCheck.LogLine(r.Run, r.WuCheck));
                 break;
+            case "defender-check" when r.DefenderCheck != null:
+                // The check's verdict and counts as tokens; never a file, a rule or a name.
+                Lines.Add(Time(r) + DefenderCheck.LogLine(r.Run, r.DefenderCheck));
+                break;
             case "finding":
                 var time = Time(r);
                 var word = FindingSeverityText.Word(FindingSeverityText.Parse(r.Severity));

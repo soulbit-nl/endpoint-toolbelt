@@ -9,7 +9,7 @@ This document describes the design of Endpoint Toolbelt 1.0.
 +--------------------------------+       +------------------------------------+
 | EndpointToolbelt.exe (WPF)     |       | EndpointToolbeltService            |
 |  - health view (user context)  | pipe  |  - pipe server, caller identity    |
-|  - actions, results, history   |<----->|  - action whitelist (10 actions)   |
+|  - actions, results, history   |<----->|  - action whitelist (13 actions)   |
 |  - support package > Downloads |       |  - confirmations, rate limits,     |
 +--------------------------------+       |    multi-session gate              |
                                          |  - one worker, explicit Busy       |
@@ -55,8 +55,9 @@ cmdlets, through the in-box cmdlet runner.
 | `DiagnoseApps` | Check my apps or Review affected apps / An app won't install | none (read-only) | 30 per caller per hour, apart from `UserRateLimitPerHour` | 5 min | no sync: it changes nothing |
 | `RenewIpAddress` | Get a new IP address (the adapter the user chose, by its interface index) | none | confirmation; other-sessions acknowledgement; `AllowMachineWideOnMultiSession`; a physical adapter under that index; a fixed address is not renewed (69003) | 5 min | no sync |
 | `CheckWindowsUpdate` | Check Windows Update (Windows won't update and For IT) | none (read-only) | shares the read-only limit of `DiagnoseApps`: 30 per caller per hour together, apart from `UserRateLimitPerHour` | 5 min | no sync: it changes nothing |
+| `CheckDefenderBlocks` | Check Defender blocks (For IT) | none (read-only) | shares the read-only limit of `DiagnoseApps`: 30 per caller per hour together, apart from `UserRateLimitPerHour` | 5 min | no sync: it changes nothing |
 
-All twelve are available to every interactive user. The service enforces the same
+All thirteen are available to every interactive user. The service enforces the same
 confirmations the app asks for, so a request without them is refused; the flags are
 asserted by the client, though (see [security.md](security.md)). The time limit is the
 service's hard limit; the engine plans its steps to end 10 minutes before it.
@@ -99,7 +100,7 @@ Service-level result codes:
    so a service restart does not reset it), and replies `Accepted` or a
    result code. Cooldowns are not checked here: the engine owns the single cooldown
    mechanism, because some cooldowns are decided only after a read-only diagnosis.
-   Creating a support package, Check Windows Update and the app diagnosis do not count toward
+   Creating a support package, Check Windows Update, Check Defender blocks and the app diagnosis do not count toward
    `UserRateLimitPerHour`. On a shared device (a multi-session host, or other user sessions
    present or uncountable) support packages have their own limit of 4 per user per hour, and on a
    single-user device none.
@@ -278,6 +279,7 @@ IME versions, so:
 | Per-user data | `%LOCALAPPDATA%\EndpointToolbelt\` (`settings.json`, `history.log`, `HealthReport.txt`, and `last-run.log`: a copy of the run log opened last with "Open full log") | the user |
 | Run history | `%LOCALAPPDATA%\EndpointToolbelt\runs\<start in UTC>_<Action>_<run ID>.log` (for example `20261015-120000Z_RetryAppsAndPolicies_ab12cd34.log`; a check in the app uses its `local-` ID): one log per run, written by the app after every run the engine was asked to do and every check in the app, and when the user chooses "Open full log" (a run that still goes on is written as it is then, and its file is replaced when it ends). Each write goes through a temporary file that is swapped in. Kept: the newest 50 logs, at most 20 MB together; older ones are deleted after each write. A log whose name has no run ID is kept as history with its unknown fields left empty | the user |
 | Support package | `<Downloads>\Toolbelt_yyyyMMdd[-n].zip` | the user |
+| Device report as a web page | `<Downloads>\EndpointToolbelt-Report-yyyyMMdd-HHmmss[_n].html`, built and written by the app as the user; one file, no script, nothing loaded from elsewhere, every value HTML-encoded | the user |
 | Run log | `<Downloads>\EndpointToolbelt_<Action>_<run ID>.log` (`EndpointToolbelt_<Action>_<start in UTC>[_n].log` for a run without an ID), written by the app (off its window thread, through a temporary file) after a run that failed, ended with warnings (exit 1 or 2; not when the only point is a sync Windows queued), left a problem, or was stopped: a header (app version, device, user, time zone and offset, action, run ID, service result, exit code, start, and the end only when the run's summary confirms it, else "Captured at", in local time and UTC), the result cards and the timeline in the user's time zone; every run has a file of its own | the user |
 
 The IME Logs folder belongs to the Intune Management Extension, not to this product.

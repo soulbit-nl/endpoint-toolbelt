@@ -216,6 +216,17 @@ public static class ToolRuns
         return result;
     }
 
+    /// <summary>Whether a run is recent enough for its result to stand on a tool row or tile (the last 24 hours).</summary>
+    public static bool IsRecent(ToolRun run, DateTime nowUtc)
+    {
+        var when = run?.Log.StartedUtc ?? run?.Log.WrittenUtc;
+        return when != null && nowUtc - when.Value <= RowResultFor;
+    }
+
+    /// <summary>The last runs of the last 24 hours only, for the tiles.</summary>
+    public static IReadOnlyDictionary<string, ToolRun> Recent(IReadOnlyDictionary<string, ToolRun> latest, DateTime nowUtc)
+        => latest == null ? new Dictionary<string, ToolRun>() : latest.Where(p => IsRecent(p.Value, nowUtc)).ToDictionary(p => p.Key, p => p.Value);
+
     /// <summary>
     /// A group's summary on its tile: its number of tools, then the problems and points to
     /// check among its tools' last runs, else how its newest run ended ("4 tools · last run OK").
@@ -319,15 +330,27 @@ public static class ToolRuns
         return ClockTime(utc, zone, nowUtc) + " · " + name + (said.Length > 0 ? " · " + said : "");
     }
 
-    /// <summary>The run's line in a tool row: its result word (or its outcome in words) and short time, or that it has not run here.</summary>
+    /// <summary>How long a run's result stays on its tool row: older results may no longer be true.</summary>
+    public static readonly TimeSpan RowResultFor = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// The run's line in a tool row: its result word (or its outcome in words) and short time, for a run
+    /// of the last 24 hours only; empty for an older run or none (an old OK or PROBLEM may no longer be
+    /// true, and "Not run yet" says nothing useful). Nothing to repair reads OK.
+    /// </summary>
     public static string RowText(ToolInfo tool, ToolRun run, TimeZoneInfo zone, DateTime nowUtc)
-        => RowLine(tool, run, r => ShortWhen(r.Log.StartedUtc ?? r.Log.WrittenUtc, zone, nowUtc));
+    {
+        if (run != null && !IsRecent(run, nowUtc)) { run = null; }
+        return RowLine(tool, run, r => ShortWhen(r.Log.StartedUtc ?? r.Log.WrittenUtc, zone, nowUtc));
+    }
 
     private static string RowLine(ToolInfo tool, ToolRun run, Func<ToolRun, string> when)
     {
         if (tool.OpensOnly) { return "Opens a folder"; }
-        if (run == null) { return "Not run yet"; }
-        var word = !string.IsNullOrEmpty(run.Outcome) ? run.Outcome : Word(run.Result);
+        if (run == null) { return ""; }
+        // "Nothing to repair" is a good result: the row says OK, as for every good result.
+        var word = !string.IsNullOrEmpty(run.Outcome) && !run.Outcome.Equals("Nothing to repair", StringComparison.OrdinalIgnoreCase) ? run.Outcome : Word(run.Result);
+        if (word.Length == 0 && run.Outcome != null && run.Outcome.Equals("Nothing to repair", StringComparison.OrdinalIgnoreCase)) { word = "OK"; }
         var at = when(run);
         return word.Length == 0 ? "Ran " + at : word + " · " + at;
     }

@@ -181,8 +181,8 @@ public class EngineAppDiagnosisTests : IDisposable
         Assert.DoesNotContain(types, t => t == typeof(AppActionParts) || t.ToString().Contains("RefreshResult") || t.ToString().Contains("MdmSyncResult") || t.ToString().Contains("ContentCacheResult"));
         Assert.NotNull(handler);
         Assert.True(ActionCatalog.Get(ToolbeltAction.DiagnoseApps).ReadOnly);
-        // The Windows Update check is the only other read-only action.
-        Assert.Equal(new[] { ToolbeltAction.DiagnoseApps, ToolbeltAction.CheckWindowsUpdate }, ActionCatalog.All.Where(a => ActionCatalog.Get(a).ReadOnly).OrderBy(a => (int)a));
+        // The Windows Update check and the Defender check are the only other read-only actions.
+        Assert.Equal(new[] { ToolbeltAction.DiagnoseApps, ToolbeltAction.CheckWindowsUpdate, ToolbeltAction.CheckDefenderBlocks }, ActionCatalog.All.Where(a => ActionCatalog.Get(a).ReadOnly).OrderBy(a => (int)a));
     }
 
     [Fact]

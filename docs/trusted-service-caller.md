@@ -112,12 +112,14 @@ service desk keeps it. The service enforces every other gate; the caller cannot 
 | `DiagnoseApps` | 10 | no | no | no (read-only limit instead) | no |
 | `RenewIpAddress` | 11 | yes | yes | yes | no |
 | `CheckWindowsUpdate` | 12 | no | no | no (read-only limit instead) | no |
+| `CheckDefenderBlocks` | 13 | no | no | no (read-only limit instead) | no |
 
 `DiagnoseApps` is read-only; see
 [The read-only app diagnosis](#the-read-only-app-diagnosis) below. `RenewIpAddress`
 renews the DHCP lease of one physical network adapter, the one `InterfaceIndex` names; see
 [Get a new IP address](#get-a-new-ip-address) below. `CheckWindowsUpdate` is read-only;
-see [Check Windows Update](#check-windows-update) below.
+see [Check Windows Update](#check-windows-update) below. `CheckDefenderBlocks` is read-only;
+see [Check Defender blocks](#check-defender-blocks) below.
 
 Gates, in the order the service applies them, each answered with `Rejected` and a result code:
 
@@ -139,8 +141,8 @@ Gates, in the order the service applies them, each answered with `Rejected` and 
    signed in) and `ConfirmationNonce` is not a valid nonce of this caller.
 8. `RateLimited` (22): more than `UserRateLimitPerHour` (default 20, 1-60) counted actions in
    the last hour for this caller, or more than 4 support packages per hour on a shared device,
-   or more than 30 read-only runs per hour for this caller (`DiagnoseApps`, and
-   `CheckWindowsUpdate`, together).
+   or more than 30 read-only runs per hour for this caller (`DiagnoseApps`,
+   `CheckWindowsUpdate` and `CheckDefenderBlocks`, together).
 9. The engine's cooldowns are checked by the engine after its read-only diagnosis: a run that
    is accepted can still end with exit code 69001 (`CooldownActive`) and the next time in
    `StatusInfo.Cooldowns`. 69002 is a pending restart, 69003 nothing to repair.
@@ -265,6 +267,57 @@ or pending restart stands in the way). Each finding carries one next step. No re
 update server, a path, a user or the device. Exit code 0 when the device is up to date and no
 finding needs checking, 2 otherwise. A service that does not know the action answers `Rejected` /
 `InvalidRequest` (13).
+
+## Check Defender blocks
+
+`CheckDefenderBlocks` (value 13) reads what Microsoft Defender logged in the last 14 days and
+changes nothing: threat detections (event 1116, with what Defender did from its action events 1117, 1118 and 1119), attack surface reduction rules that blocked
+(1121) or only audited (1122), controlled folder access (1123 block, 1124 audit; 1127 and 1128 for
+a disk's sectors) and network protection (1126 block, 1125 audit), from the Microsoft Defender
+operational log, which a standard user cannot read. No confirmation, not machine-wide, a time limit of 5 minutes, and it shares the
+read-only limit of `DiagnoseApps` (30 per caller per hour).
+
+**What the caller gets.** Events are grouped per protection and per thing that was stopped (the
+program an attack surface reduction rule kept from starting, or the process for a rule that stops
+what a process does; the app controlled folder access kept out; the process and destination of a
+network protection event), with a count and the newest time; at most ten groups are named, the
+rest counted. The result covers the device and the
+caller: an event whose user is Windows or a service account, or the caller's own account, is
+shown; an event of any other account (also one Windows cannot resolve) and an event without a user
+are counted only. A path below the caller's profile starts with `%USERPROFILE%`; a path below any
+other profile of the device (in any of its forms) is replaced by a fixed text; a device or volume
+path outside the profiles is written as its file name; only the event values the check uses are
+read, so the command lines an event carries are never read; a destination is reduced to its host
+name; no account name is returned. SmartScreen in Microsoft Edge and the firewall are not read.
+
+**Records**, besides the usual `progress`, `finding` and `summary`: one `defender-check` with
+`verdict` (`none`, `audits`, `blocks`, `detections`, `empty` (the log holds no events),
+`not-active` (Microsoft Defender Antivirus is passive or off and nothing was found),
+`state-unknown` (nothing was found and Defender's status could not be read) or `unreadable`), `defender` (`active`, `passive`, `off` or `unknown`), `days` (14), `detections`,
+`blocks` (attack surface reduction rules), `folderBlocks` (controlled folder access),
+`networkBlocks` (network protection), `audits` (of every protection), `others` (events of other
+users, not shown), `groups` and `truncated` (the log
+held more than the 2000 events the check reads). With an active Defender (not passive or off, and
+a log that holds events) the record also has the health facts: `quickScan` and `fullScan`
+(UTC, `yyyy-MM-ddTHH:mm:ssZ`, empty when none is recorded), `rtp` (`on`, `off` or
+`unknown`), `offNow` (real-time protection, the antivirus or the antispyware is off now),
+`protectionOff` (events 5001, 5012 and 5010), `featureFailures` (3002), `tamperBlocked`
+(5013), `updateFailures` (2001, 2003, 2004), `updateWarning` (a failed update no later update
+is known to have fixed) and `healthRead` (`full`, `short` when the log reaches less than the
+period, or `none`). The health events are read apart from the blocks, at most 500, so they never
+use up the blocks' cap; the scan events (1000 to 1005) and the configuration change event (5007)
+are never read. The findings are `DEFCHECK-DETECTION-<n>`,
+`DEFCHECK-BLOCK-<n>`, `DEFCHECK-AUDIT-<n>`, `DEFCHECK-NONE`, `DEFCHECK-EMPTY`, `DEFCHECK-NOT-ACTIVE`, `DEFCHECK-STATE-UNKNOWN`, `DEFCHECK-MORE`,
+`DEFCHECK-OTHER-USERS`, `DEFCHECK-TRUNCATED`, `DEFCHECK-SHORT-LOG` and `DEFCHECK-UNREADABLE`, and for
+the health facts `DEFCHECK-SCAN`, `DEFCHECK-NOT-OFF`, `DEFCHECK-OFF-<n>`, `DEFCHECK-OFF-NOW`,
+`DEFCHECK-FEATURE`, `DEFCHECK-TAMPER-<n>` and `DEFCHECK-UPDATE-<n>`.
+
+**Exit codes:** 0 when nothing was blocked and no threat was detected (audits only count as nothing
+blocked; a passive Defender too), 2 when a protection blocked, a threat was detected, the log holds
+no events or the log could not be read, and also when protection is off now, was switched off
+without being on again, a real-time protection feature failed or an update failed without a later
+one. A service that does not
+know the action answers `Rejected` / `InvalidRequest` (13), as above.
 
 ## The messages of a run
 

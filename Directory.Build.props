@@ -5,7 +5,7 @@
     device needs a new three-part version.
   -->
   <PropertyGroup>
-    <Version>1.0.1</Version>
+    <Version>1.1.2</Version>
     <Product>Endpoint Toolbelt</Product>
     <Company>SoulBit</Company>
     <Authors>SoulBit</Authors>

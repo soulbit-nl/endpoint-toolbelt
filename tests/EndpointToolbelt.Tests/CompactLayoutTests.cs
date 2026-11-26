@@ -162,7 +162,17 @@ public class CompactLayoutTests
             AssertFits(window, "Home, two checks");
 
             MainWindowPagesTests.Call(window, "ShowPage", MainWindowPagesTests.PageValue("It"), false);
-            AssertFits(window, "For IT, five recent runs");
+            // Five runs in the history; For IT lists the newest three, All runs has the rest.
+            Assert.Equal(MainWindow.RecentRunsShown, ((System.Collections.IEnumerable)MainWindowPagesTests.Get<ItemsControl>(window, "RecentRuns").ItemsSource).Cast<object>().Count());
+            AssertFits(window, "For IT, three recent runs");
+            // Also with the status of a run shown below the page (the six tiles were sized for it).
+            MainWindowPagesTests.Call(window, "SetStatus", "Microsoft Defender logged 20 rule blocks in the last 14 days.", Tone.Warning, true, true);
+            AssertFits(window, "For IT, three recent runs and a status");
+            // Check Defender blocks with blocks and detections: its short status and the line that names IT support.
+            // Its status names no counts, and For IT shows no line to IT support under it (View details has Copy details for IT).
+            MainWindowPagesTests.Call(window, "SetStatus", "Microsoft Defender blocked or detected something in the last 14 days. See the details; copy details for IT support.", Tone.Warning, true, true);
+            Assert.Equal(Visibility.Collapsed, MainWindowPagesTests.Get<TextBlock>(window, "HandoverText").Visibility);
+            AssertFits(window, "For IT, three recent runs and the Defender status");
         });
     }
 
@@ -173,10 +183,10 @@ public class CompactLayoutTests
         {
             var window = NewWindowWithLongTileOutcomes();
             MainWindowPagesTests.Call(window, "ShowPage", MainWindowPagesTests.PageValue("It"), false);
-            Assert.Equal("7 tools · last run not confirmed", MainWindowPagesTests.Get<TextBlock>(window, "SignInTileSummary").Text);
+            Assert.Equal("5 tools · last run not confirmed", MainWindowPagesTests.Get<TextBlock>(window, "MicrosoftTileSummary").Text);
             Assert.Equal("4 tools · last run skipped: cooldown active", MainWindowPagesTests.Get<TextBlock>(window, "NetworkTileSummary").Text);
-            Assert.Equal("4 tools · last run blocked: restart pending", MainWindowPagesTests.Get<TextBlock>(window, "AppsTileSummary").Text);
-            Assert.Equal("7 tools · last run nothing to repair", MainWindowPagesTests.Get<TextBlock>(window, "WindowsTileSummary").Text);
+            Assert.Equal("5 tools · last run blocked: restart pending", MainWindowPagesTests.Get<TextBlock>(window, "AppsTileSummary").Text);
+            Assert.Equal("4 tools · last run nothing to repair", MainWindowPagesTests.Get<TextBlock>(window, "WindowsTileSummary").Text);
             AssertFits(window, "For IT, every tile with a long outcome");
         });
     }
@@ -191,7 +201,8 @@ public class CompactLayoutTests
         var window = MainWindowPagesTests.NewWindow();
         var folder = window.RunsFolderOverride;
         Directory.CreateDirectory(folder);
-        var start = new DateTime(2026, 11, 14, 10, 0, 0, DateTimeKind.Utc);
+        // Runs of the last hours: a tile sums up only the last 24 hours.
+        var start = DateTime.UtcNow.AddHours(-2);
         var runs = new[]
         {
             ("StartWordinsafemode", "local-0a1b2c3d", "Outcome   : Not confirmed"),

@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The screens of an install that a person starts: on a first install "Endpoint Toolbelt is ready
+  to install." with the check box "Check for new versions at start-up", then progress, then
+  "Endpoint Toolbelt is installed." with Finish; "already installed" with Close
+  when the same package is installed; "was not installed" with the install-log hint when it fails.
+  Bit, the app's helper character, is on every screen in the pose of the moment (bitmaps drawn by
+  the app's own HelperCharacter, InstallerArtTests, staged by build\build.ps1 to ArtDir).
+  Core WiX elements only (no WixUI extension: no WiX branding, no licence page). A silent install
+  (/qn, Intune) shows none of them and changes nothing.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <!-- The setup never starts the app: a process it started would have the rights the setup was
+         started with, so from an elevated prompt the app would run elevated, as that administrator.
+         The user opens the app from the Start menu. The version check's choice is made before the
+         install, on the first screen, and the install itself writes it for the device
+         (UPDATECHECK=0, as on a silent install). -->
+
+    <Binary Id="EtbBitWorking" SourceFile="$(var.ArtDir)\bit-working.bmp" />
+    <Binary Id="EtbBitDone" SourceFile="$(var.ArtDir)\bit-done.bmp" />
+    <Binary Id="EtbBitIdle" SourceFile="$(var.ArtDir)\bit-idle.bmp" />
+    <Binary Id="EtbBitError" SourceFile="$(var.ArtDir)\bit-error.bmp" />
+    <Binary Id="EtbBitAttention" SourceFile="$(var.ArtDir)\bit-attention.bmp" />
+
+    <UI Id="EtbUI">
+      <TextStyle Id="EtbFont_Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="EtbFont_Title" FaceName="Segoe UI" Size="12" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="EtbFont_Normal" />
+      <Property Id="ErrorDialog" Value="EtbErrorDlg" />
+
+      <!-- Progress: installing, or removing when the uninstall runs with screens. -->
+      <Dialog Id="EtbProgressDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup" Modeless="yes">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitWorking" />
+        <Control Id="TitleInstall" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Installing Endpoint Toolbelt..." HideCondition="REMOVE=&quot;ALL&quot; OR ACTION=&quot;ADMIN&quot;" />
+        <Control Id="TitleUnpack" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes" Hidden="yes"
+                 Text="{\EtbFont_Title}Unpacking Endpoint Toolbelt..." ShowCondition="ACTION=&quot;ADMIN&quot;" />
+        <Control Id="TitleRemove" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes" Hidden="yes"
+                 Text="{\EtbFont_Title}Removing Endpoint Toolbelt..." ShowCondition="REMOVE=&quot;ALL&quot;" />
+        <Control Id="ActionText" Type="Text" X="72" Y="34" Width="245" Height="12" NoPrefix="yes">
+          <Subscribe Event="ActionText" Attribute="Text" />
+        </Control>
+        <Control Id="ProgressBar" Type="ProgressBar" X="72" Y="50" Width="245" Height="10" ProgressBlocks="yes" Text="Progress">
+          <Subscribe Event="SetProgress" Attribute="Progress" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="EtbCancelDlg" />
+        </Control>
+      </Dialog>
+
+      <Dialog Id="EtbCancelDlg" Width="220" Height="70" Title="Endpoint Toolbelt Setup" NoMinimize="yes">
+        <Control Id="Text" Type="Text" X="15" Y="12" Width="190" Height="20" NoPrefix="yes"
+                 Text="Cancel the setup of Endpoint Toolbelt?" />
+        <Control Id="Yes" Type="PushButton" X="80" Y="43" Width="60" Height="17" Text="&amp;Yes">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+        <Control Id="No" Type="PushButton" X="145" Y="43" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;No">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+
+      <!-- Before the install, while nobody chose for this device (a first install, or an upgrade of
+           a device without the choice): one sentence, the check box for the version check
+           (checked), and Install. Install sets UPDATECHECK to 1 or 0, which the install writes for
+           the device with the mark that the choice was made. A device with that mark, a repair and
+           an UPDATECHECK given on the command line show no such screen. -->
+      <Property Id="ETBUPDATECHECK" Value="1" />
+      <Dialog Id="EtbWelcomeDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitIdle" />
+        <Control Id="Title" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt is ready to install." />
+        <Control Id="UpdateCheck" Type="CheckBox" X="72" Y="40" Width="245" Height="14" Property="ETBUPDATECHECK" CheckBoxValue="1"
+                 Text="&amp;Check for new versions at start-up" />
+        <Control Id="Install" Type="PushButton" X="192" Y="72" Width="60" Height="17" Default="yes" Text="&amp;Install">
+          <Publish Property="UPDATECHECK" Value="0" Condition="NOT ETBUPDATECHECK" />
+          <Publish Property="UPDATECHECK" Value="1" Condition="ETBUPDATECHECK" />
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="257" Y="72" Width="60" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+
+      <!-- Done: one sentence and Finish, after an install or a removal. -->
+      <Dialog Id="EtbExitDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitDone" />
+        <Control Id="TitleInstalled" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt is installed." HideCondition="REMOVE=&quot;ALL&quot;" />
+        <Control Id="TitleRemoved" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes" Hidden="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt is removed." ShowCondition="REMOVE=&quot;ALL&quot;" />
+        <Control Id="Finish" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;Finish">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+
+      <!-- An administrative install (msiexec /a) only unpacks the package into a folder: nothing is
+           installed on this device, so there is no app to start. -->
+      <Dialog Id="EtbAdminExitDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitDone" />
+        <Control Id="Title" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt is unpacked." />
+        <Control Id="Text" Type="Text" X="72" Y="36" Width="245" Height="24" NoPrefix="yes"
+                 Text="The files are in the folder you chose. Nothing was installed on this device." />
+        <Control Id="Finish" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;Finish">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+
+      <!-- Failed: one sentence and where the reason is. -->
+      <Dialog Id="EtbFatalErrorDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitError" />
+        <Control Id="TitleInstall" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt was not installed." HideCondition="REMOVE=&quot;ALL&quot;" />
+        <Control Id="TitleRemove" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes" Hidden="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt was not removed." ShowCondition="REMOVE=&quot;ALL&quot;" />
+        <Control Id="Text" Type="Text" X="72" Y="36" Width="245" Height="24" NoPrefix="yes"
+                 Text="Your IT support can find the reason in an install log (see the admin guide)." />
+        <Control Id="Close" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;Close">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+
+      <Dialog Id="EtbUserExitDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitAttention" />
+        <Control Id="Title" Type="Text" X="72" Y="14" Width="245" Height="16" Transparent="yes" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Setup was cancelled." />
+        <Control Id="Text" Type="Text" X="72" Y="36" Width="245" Height="12" NoPrefix="yes"
+                 Text="Nothing was changed." />
+        <Control Id="Close" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;Close">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+
+      <!-- The same package is already installed: no repair or removal from here (Modify is off in
+           Programs and Features too); Close ends the setup without a change. -->
+      <Dialog Id="EtbAlreadyInstalledDlg" Width="330" Height="100" Title="Endpoint Toolbelt Setup">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitIdle" />
+        <Control Id="Text" Type="Text" X="72" Y="14" Width="245" Height="34" NoPrefix="yes"
+                 Text="{\EtbFont_Title}Endpoint Toolbelt [ProductVersion] is already installed." />
+        <Control Id="Close" Type="PushButton" X="257" Y="72" Width="60" Height="17" Default="yes" Cancel="yes" Text="&amp;Close">
+          <Publish Property="ETBALREADYSHOWN" Value="1" />
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+
+      <!-- Windows Installer's own messages (a downgrade refused, a file that cannot be written)
+           need an error dialog with these controls once the package has screens. -->
+      <Dialog Id="EtbErrorDlg" Width="270" Height="105" Title="Endpoint Toolbelt Setup" ErrorDialog="yes">
+        <Control Id="ErrorText" Type="Text" X="15" Y="12" Width="240" Height="60" NoPrefix="yes" TabSkip="no" Text="Information text" />
+        <Control Id="Y" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="&amp;Yes">
+          <Publish Event="EndDialog" Value="ErrorYes" />
+        </Control>
+        <Control Id="A" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="Cancel">
+          <Publish Event="EndDialog" Value="ErrorAbort" />
+        </Control>
+        <Control Id="C" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="Cancel">
+          <Publish Event="EndDialog" Value="ErrorCancel" />
+        </Control>
+        <Control Id="I" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="&amp;Ignore">
+          <Publish Event="EndDialog" Value="ErrorIgnore" />
+        </Control>
+        <Control Id="N" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="&amp;No">
+          <Publish Event="EndDialog" Value="ErrorNo" />
+        </Control>
+        <Control Id="O" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="OK">
+          <Publish Event="EndDialog" Value="ErrorOk" />
+        </Control>
+        <Control Id="R" Type="PushButton" X="75" Y="80" Width="56" Height="17" TabSkip="yes" Text="&amp;Retry">
+          <Publish Event="EndDialog" Value="ErrorRetry" />
+        </Control>
+      </Dialog>
+
+      <!-- A file of the product in use during an upgrade (the app normally closes itself when its
+           service stops). Windows Installer looks for this dialog by its name. -->
+      <Dialog Id="FilesInUse" Width="330" Height="140" Title="Endpoint Toolbelt Setup" KeepModeless="yes">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitAttention" />
+        <Control Id="Text" Type="Text" X="72" Y="14" Width="245" Height="20" NoPrefix="yes"
+                 Text="Close these programs to continue the setup of Endpoint Toolbelt:" />
+        <Control Id="List" Type="ListBox" X="72" Y="38" Width="245" Height="58" Property="FileInUseProcess" Sunken="yes" TabSkip="yes" />
+        <Control Id="Retry" Type="PushButton" X="127" Y="112" Width="60" Height="17" Default="yes" Text="&amp;Retry">
+          <Publish Event="EndDialog" Value="Retry" />
+        </Control>
+        <Control Id="Ignore" Type="PushButton" X="192" Y="112" Width="60" Height="17" Text="&amp;Ignore">
+          <Publish Event="EndDialog" Value="Ignore" />
+        </Control>
+        <Control Id="Exit" Type="PushButton" X="257" Y="112" Width="60" Height="17" Cancel="yes" Text="E&amp;xit">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+
+      <!-- The app open during an upgrade or a removal. Windows Installer checks which files are in use
+           before the old service stops, so the app has not closed itself yet; with this dialog it asks
+           Windows' Restart Manager, which closes the app as when Windows signs out (the user opens it
+           again afterwards). Windows Installer looks for this dialog by its name. -->
+      <Dialog Id="MsiRMFilesInUse" Width="330" Height="140" Title="Endpoint Toolbelt Setup" KeepModeless="yes">
+        <Control Id="Bit" Type="Bitmap" X="12" Y="12" Width="48" Height="48" Text="EtbBitAttention" />
+        <Control Id="Text" Type="Text" X="72" Y="14" Width="245" Height="20" NoPrefix="yes"
+                 Text="Endpoint Toolbelt is open. The setup closes it to continue:" />
+        <Control Id="List" Type="ListBox" X="72" Y="38" Width="245" Height="58" Property="FileInUseProcess" Sunken="yes" TabSkip="yes" />
+        <Control Id="Close" Type="PushButton" X="132" Y="112" Width="120" Height="17" Default="yes" Text="&amp;Close it and continue">
+          <Publish Event="RMShutdownAndRestart" Value="0" />
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+        <Control Id="Exit" Type="PushButton" X="257" Y="112" Width="60" Height="17" Cancel="yes" Text="E&amp;xit">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+
+      <InstallUISequence>
+        <Show Dialog="EtbAlreadyInstalledDlg" Before="ExecuteAction"
+              Condition="Installed AND NOT REMOVE AND NOT REINSTALL AND NOT PATCH AND NOT MSIPATCHREMOVE" />
+        <Show Dialog="EtbWelcomeDlg" Before="EtbProgressDlg"
+              Condition="NOT Installed AND NOT UPDATECHECK AND NOT ETBUPDATECHECKASKED" />
+        <Show Dialog="EtbProgressDlg" Before="ExecuteAction" />
+        <Show Dialog="EtbExitDlg" OnExit="success" />
+        <Show Dialog="EtbUserExitDlg" OnExit="cancel" Condition="NOT ETBALREADYSHOWN" />
+        <Show Dialog="EtbFatalErrorDlg" OnExit="error" />
+      </InstallUISequence>
+
+      <AdminUISequence>
+        <Show Dialog="EtbProgressDlg" Before="ExecuteAction" />
+        <Show Dialog="EtbAdminExitDlg" OnExit="success" />
+        <Show Dialog="EtbUserExitDlg" OnExit="cancel" />
+        <Show Dialog="EtbFatalErrorDlg" OnExit="error" />
+      </AdminUISequence>
+    </UI>
+  </Fragment>
+</Wix>

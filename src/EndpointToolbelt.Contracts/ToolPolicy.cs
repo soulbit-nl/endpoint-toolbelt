@@ -21,12 +21,13 @@ public static class ToolPolicy
     /// <summary>A longer entry is not a tool name.</summary>
     public const int MaxNameLength = 64;
 
-    /// <summary>The nine tools that run in the service, by their contract action names.</summary>
+    /// <summary>The ten tools that run in the service, by their contract action names.</summary>
     public static readonly IReadOnlyList<ToolbeltAction> ServiceTools = new[]
     {
         ToolbeltAction.ClearAppCache,
         ToolbeltAction.FullReset,
         ToolbeltAction.UpdateDefender,
+        ToolbeltAction.CheckDefenderBlocks,
         ToolbeltAction.BackupRecoveryKey,
         ToolbeltAction.SyncClock,
         ToolbeltAction.CheckWindowsUpdate,

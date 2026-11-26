@@ -98,7 +98,7 @@ public static class DeviceSettingRows
             // An MDM error that names no setting (enrollment, a sync) is not a profile failure:
             // it stays in the report and the support package, not on this row.
             var ok = HealthChecks.Make(HealthChecks.Profiles, HealthStatus.Pass, "No failed settings in the last 7 days");
-            ok.ReportDetail = "No failed settings in the last 7 days; " + Words.Count(p.Errors, "other MDM error") + warnings + " (MDM admin log)";
+            ok.ReportDetail = "No failed settings in the last 7 days; " + Words.Count(p.Errors, "other MDM error") + warnings + " (MDM admin log)" + AlreadySucceededReport(p);
             return ok;
         }
         // Plain names ("Windows Hello PIN: lowercase letters"), separated by semicolons because a
@@ -110,9 +110,19 @@ public static class DeviceSettingRows
         var detail = Words.Count(settings.Count, "setting") + " failed in the last 7 days: " + string.Join("; ", shown) + (settings.Count > shown.Count ? " and more" : "");
         var row = HealthChecks.Make(HealthChecks.Profiles, HealthStatus.Warn, detail);
         row.ReportDetail = Words.Count(p.Errors, "error") + warnings + " in the last 7 days (MDM admin log)"
-            + "; settings: " + string.Join("; ", settings.Select((s, i) => Named(s, SettingNames.WithToken) + When(i, t => ToolRuns.FullWhen(t, TimeZoneInfo.Local)))) + notApplicableReport;
+            + "; settings: " + string.Join("; ", settings.Select((s, i) => Named(s, SettingNames.WithToken) + When(i, t => ToolRuns.FullWhen(t, TimeZoneInfo.Local)))) + notApplicableReport
+            + AlreadySucceededReport(p);
         return row;
     }
+
+    /// <summary>
+    /// For the report only: failed commands on an Office installation whose own status says it
+    /// succeeded (the MDM client sends it again), which are no failed setting.
+    /// </summary>
+    internal static string AlreadySucceededReport(ProfileErrorsReadout p)
+        => p.AlreadySucceeded > 0
+            ? "; " + Words.Count(p.AlreadySucceeded, "failed command") + " on an Office installation that succeeded on this device (not counted)"
+            : "";
 
     /// <summary>The hint of a profiles row whose only failed settings cannot apply on this machine.</summary>
     public const string NotApplicableHint =

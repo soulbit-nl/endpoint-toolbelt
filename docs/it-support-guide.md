@@ -20,11 +20,18 @@ runs as SYSTEM.
 | What | Where the user gets it | What it holds |
 |---|---|---|
 | Copy details for IT | A link or button on Home, on every problem page, on "My problem is not listed" and in the details drawer of a result | A short ticket text: a reference, the device facts, the evidence, what ran and the next step; for a support package also the zip's name and SHA-256 |
-| Support package | "Create support package" on Home, on "My problem is not listed" and on For IT support | `Toolbelt_yyyyMMdd.zip` in Downloads, with logs, app state and an index |
+| Support package | "Create support package" on Home and on "My problem is not listed", "Support package" on For IT support | `Toolbelt_yyyyMMdd.zip` in Downloads, with logs, app state and an index |
 | Run log | Saved by the app after a run that did not end well | `EndpointToolbelt_<Action>_<run ID>.log` in Downloads |
-| Device report | For IT support, "View device report" | `HealthReport.txt`: every detailed check with its technical name |
+| Device report | For IT support, "View report" | `HealthReport.txt`: every detailed check with its technical name |
+| Device report as a web page | For IT support, "Export HTML" | `EndpointToolbelt-Report-yyyyMMdd-HHmmss.html` in Downloads: the device report plus every work app and the read-only checks, run first |
 
 ![The For IT support tab](images/for-it.png)
+
+When a newer version of Endpoint Toolbelt exists, once per version a small notice at start-up says
+it, with a link to the release notes on the product's page, and About names it. The app never
+installs it: deploy it as you deployed the app. The user can switch the check off in About ("Check
+for new versions at start-up"); the admin guide says how the check works and how the installer
+property `UPDATECHECK` and the policy value `UpdateCheck` switch it off.
 
 ## Read a "Copy details for IT" ticket
 
@@ -34,7 +41,7 @@ claimed only when the run's end was confirmed.
 
 ```text
 Endpoint Toolbelt · Sync clock · Reference 3f9c2a71
-App version · 1.0.1
+App version · 1.1.2
 Last restart · 2026-11-02 08:12 UTC+01:00 (12 days ago); for IT: the device has not restarted for 12 days
 Join type · Microsoft Entra joined
 MDM enrollment ID · 11111111-2222-3333-4444-555555555555
@@ -104,7 +111,7 @@ or none. A row without a fix whose hint names IT support ends with "Contact your
 
 ### The device report
 
-**View device report** runs the checks again and opens `HealthReport.txt`
+**View report** (For IT support) runs the checks again and opens `HealthReport.txt`
 (`%LOCALAPPDATA%\EndpointToolbelt\`). It is also in every support package. Its parts, in order:
 
 1. The time it was generated, the user's time zone, and the device clock's zone when it differs.
@@ -125,6 +132,42 @@ or none. A row without a fix whose hint names IT support ends with "Contact your
 
 ![A device report](images/device-report.png)
 
+### The device report as a web page
+
+**Export HTML** (For IT support; its help text says "Export report as HTML") runs the health checks again, then the read-only checks (the app
+diagnosis, Check Windows Update, Check Defender blocks, Check Microsoft connections and Check
+compliance settings, one after the other, the status saying which), saves
+`EndpointToolbelt-Report-yyyyMMdd-HHmmss.html` in the user's Downloads folder (a new file each
+time) and opens it in the user's browser. It holds what the text report holds, as tables, and adds
+the checks and the work apps:
+
+- **Contents and summary:** the page starts with a table of contents that links to each section,
+  and a summary: the health checks in counts, the work apps and how many need attention, and each
+  check's result, each linking to its section. Every section ends with a link back to the contents.
+- **Checks:** each read-only check with when it ran, its result and its cards (a problem or a
+  warning open, the rest folded). The app diagnosis, Check Windows Update and Check Defender
+  blocks run in the service and count toward its limit of read-only checks per hour, as any run of
+  them does; an export is never refused for it. When the service does not run one (the limit is
+  reached, another action is running, the service cannot be reached), the page shows the newest
+  result from the user's run history and says why and from when. A tool the organization switched
+  off is not run. Each run goes into the run history as a run of its own.
+- **Work apps:** when the apps were read, how many are listed and how many need attention; the
+  apps that need attention first, in a table and with a block per app (open), with the app's card
+  text, the evidence, the step for IT support, the IME record and the facts that identify it in
+  Intune (app ID, revision, or the MSI product code or MSIX package family); the other apps folded
+  in one block with their own table and blocks. Apps of other users of the device are counted,
+  never listed.
+- **Recent actions:** the newest 20 history lines instead of five.
+
+When the apps could not be read again for the report, the page says why and shows the list the
+app has, with when it was read.
+
+The page is one file with its styles inside. It contains no script and loads nothing from the
+internet, and its own content policy forbids both, so it can be opened from a ticket attachment;
+its only links point inside the page.
+Like the text report it names the device, the user and the tenant; unlike **Copy details for IT**
+it is not made to be pasted where others can read it. It is not part of the support package.
+
 ## Repair actions run by the service
 
 These run in the Windows service as SYSTEM. The service enforces the same confirmations the
@@ -132,7 +175,9 @@ app asks for, allows one run at a time on the device (a second request gets `Bus
 each user to 20 device-changing actions per hour (`UserRateLimitPerHour`). A slot is used when
 the service accepts the request, also when the run then ends in a cooldown or finds nothing to
 do. Every tool except Retry, the support package and the app diagnosis can be switched off by
-the organization ([admin guide](admin-guide.md)).
+the organization ([admin guide](admin-guide.md)). Retry is on the app path and, as the first tool
+of the group Apps, in For IT support, where its page says how many work apps needed attention at
+the last diagnosis and links to them.
 
 ![A result with its cards](images/result.png)
 
@@ -143,14 +188,15 @@ the organization ([admin guide](admin-guide.md)).
 | Retry work apps and settings | None | None | Yes |
 | Clear downloaded app content | Yes | None | Yes |
 | Full IME reset | Yes, plus other sessions | Cooldown, default 1 hour | Yes |
-| Check Windows Update | None | 30 per hour, shared with the app diagnosis | No |
+| Check Windows Update | None | 30 per hour, shared with the other read-only checks | No |
+| Check Defender blocks | None | 30 per hour, shared with the other read-only checks | No |
 | Repair Windows Update | Yes, plus other sessions | Cooldown, default 4 hours | Yes |
 | Back up recovery key | None | None | Yes |
 | Sync clock | None | None | Yes |
 | Update Defender definitions | None | None | Yes |
 | Free up disk space | Yes, plus other sessions | None | Yes |
 | Get a new IP address | Yes, plus other sessions | None | Yes |
-| App diagnosis | None | 30 per hour, shared with Check Windows Update | No |
+| App diagnosis | None | 30 per hour, shared with the other read-only checks | No |
 | Create support package | None | 4 per hour on a shared device | No |
 
 "Plus other sessions" means: when other users are signed in, the confirmation names how many,
@@ -222,6 +268,63 @@ one app."
 - **Next:** Repair Windows Update is suggested only where it can help: never past a policy, a
   disabled service or a pending restart. For a held-back update, IT can send it sooner (an
   expedited update in Intune).
+
+### Check Defender blocks
+
+In For IT support, under Defender & security. It answers "something stopped working and nobody
+knows why" on the device itself, without the Defender portal.
+
+- **Reads only:** the Microsoft Defender operational log of the last 14 days, for what blocked or
+  only audited: threat detections, attack surface reduction (ASR) rules, controlled folder access
+  (an app kept out of a protected folder such as Documents, or from a disk's boot sectors) and
+  network protection (a connection to a site or service). A standard user cannot read that log;
+  the service reads it.
+- **Does not read:** SmartScreen in Microsoft Edge (network protection does not cover Edge;
+  SmartScreen does) and the firewall. Every "nothing found" says so.
+- **One card per thing that was stopped:** for an ASR rule that keeps a program from starting (an
+  unknown download, a child process of Office, a program on USB), the card names that program:
+  "c.exe was blocked 4 times ... Started by explorer.exe." For a rule that stops what a process
+  itself does (reading the LSA's memory, injecting code), it names the process and its newest
+  target. Controlled folder access names the app ("scan.exe was not allowed to change files in a
+  protected folder") with the protected folder, as Defender logs it (for example
+  `%USERPROFILE%\OneDrive - Contoso\Documents\`; the event does not name the file); network protection names the destination by its host
+  name only ("browser.exe could not connect to malware.contoso.example"). Many events of one thing
+  are one card, with how often and when last; a detection's card says what Defender did with it
+  (for example "Quarantine"), from the action event that belongs to it; when that action failed
+  the card is an error with a step for you, as the device may not be protected. Detections come first, then blocks, then audits; at
+  most ten cards, the rest counted.
+- **For you, in the card's line for IT support:** the rule's ID, the mode (block or audit), the
+  event number, the process's path and the target, which is what an exclusion, an allowed app for
+  controlled folder access or an indicator for network protection needs. See
+  [Attack surface reduction rules](asr.md) for the rules that matter to Endpoint Toolbelt itself.
+- **Privacy:** the user sees the device's events and their own. Events of other users of the
+  device, and events that name no user, are counted, never shown; a path in another profile is not
+  written, also in its long form (`\\?\`), as a volume path or as a short (8.3) name; only the event
+  values the check uses are read, never a command line; a destination is reduced to its host name
+  (no path or query, which can carry a token); account names are never shown.
+- **Health facts** of an active Microsoft Defender, after the blocks: the last quick scan and the
+  last full scan (from Defender's own status, so the many custom scans other software asks for do
+  not count); whether real-time protection, the antivirus or the antispyware was switched off in
+  the period (events 5001, 5012, 5010; for real-time protection also when it was switched on again,
+  5000) and whether it is off now; a change tamper protection blocked (5013, with the setting only
+  when it is one of a few real-time protection settings, never another value); a real-time
+  protection feature that failed (3002, with Microsoft's step: restart, then a full scan); and a
+  failed update (2001, 2003, 2004), which is a warning until a later security intelligence update
+  succeeded. "Protection was not switched off in the last 14 days" is said only when the log
+  reaches back that far. The configuration change event (5007) is never read: its values can be
+  exclusion paths. A good result then reads, for example: "... Last quick scan today 03:34.
+  Protection was not switched off in the last 14 days." With blocks or detections the sentence
+  stays short and names only a health warning (protection off now, a failed feature, an update
+  that did not recover); the other facts are in the cards.
+- **Never:** changes a rule, an allowed app, an indicator, an exclusion or a quarantine.
+- **Verdicts:** no threat detection and no Defender block; audits only (nothing blocked); blocks;
+  detections; the log holds no events (a warning: it may have been cleared); Microsoft Defender
+  Antivirus is not the active antivirus (passive or off: its protections do not block, and the
+  other product's blocks are not in this log); nothing logged but Defender's status could not be
+  read (not shown as "nothing found"); the log could not be read (common when another
+  security product replaces Microsoft Defender). When the log reaches back less than 14 days, the
+  result says from when it reads.
+- **Copy details for IT** adds one line with the counts only.
 
 ### Repair Windows Update
 

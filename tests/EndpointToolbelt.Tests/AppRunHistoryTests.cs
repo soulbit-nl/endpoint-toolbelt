@@ -250,11 +250,11 @@ public class AppToolRunsTests
     public void Fix37_a_tile_says_how_its_newest_run_went_in_the_apps_words_and_never_ended()
     {
         ToolRun Run(RunVerdict result, string outcome = "") => new() { Log = new StoredRunLog { StartedUtc = new DateTime(2026, 11, 14, 9, 0, 0, DateTimeKind.Utc) }, Result = result, Outcome = outcome };
-        string SignIn(ToolRun run) => ToolRuns.GroupSummary(ToolGroup.SignIn, new Dictionary<string, ToolRun> { ["WordSafeButton"] = run });
+        string SignIn(ToolRun run) => ToolRuns.GroupSummary(ToolGroup.Microsoft365, new Dictionary<string, ToolRun> { ["WordSafeButton"] = run });
         string Network(ToolRun run) => ToolRuns.GroupSummary(ToolGroup.NetworkStorage, new Dictionary<string, ToolRun> { ["FreeSpaceButton"] = run });
         // A real case: a safe-mode start that answered Not confirmed.
-        Assert.Equal("7 tools · last run not confirmed", SignIn(Run(RunVerdict.Ended, "Not confirmed")));
-        Assert.Equal("7 tools · last run not installed", SignIn(Run(RunVerdict.Ended, "Not installed")));
+        Assert.Equal("5 tools · last run not confirmed", SignIn(Run(RunVerdict.Ended, "Not confirmed")));
+        Assert.Equal("5 tools · last run not installed", SignIn(Run(RunVerdict.Ended, "Not installed")));
         // An engine run with only information, by its exit code.
         Assert.Equal("4 tools · last run nothing to repair", Network(Run(RunVerdict.Ended, "Nothing to repair")));
         Assert.Equal("4 tools · last run skipped: cooldown active", Network(Run(RunVerdict.Ended, "Skipped: cooldown active")));
@@ -263,14 +263,14 @@ public class AppToolRunsTests
         // Nothing to say: the line is left out.
         Assert.Equal("4 tools", Network(Run(RunVerdict.Ended)));
         // The other verdicts keep their words; a requested start or reset adds nothing, with its outcome too.
-        Assert.Equal("7 tools · last run OK", SignIn(Run(RunVerdict.Ok)));
-        Assert.Equal("7 tools · one running", SignIn(Run(RunVerdict.Running)));
-        Assert.Equal("7 tools · last run not finished", SignIn(Run(RunVerdict.NotFinished)));
-        Assert.Equal("7 tools · 1 warning", SignIn(Run(RunVerdict.Check, "Works in safe mode")));
-        Assert.Equal("7 tools · 1 problem", SignIn(Run(RunVerdict.Problem, "Could not start")));
-        Assert.Equal("7 tools", SignIn(Run(RunVerdict.Requested, "Start requested")));
+        Assert.Equal("5 tools · last run OK", SignIn(Run(RunVerdict.Ok)));
+        Assert.Equal("5 tools · one running", SignIn(Run(RunVerdict.Running)));
+        Assert.Equal("5 tools · last run not finished", SignIn(Run(RunVerdict.NotFinished)));
+        Assert.Equal("5 tools · 1 warning", SignIn(Run(RunVerdict.Check, "Works in safe mode")));
+        Assert.Equal("5 tools · 1 problem", SignIn(Run(RunVerdict.Problem, "Could not start")));
+        Assert.Equal("5 tools", SignIn(Run(RunVerdict.Requested, "Start requested")));
         Assert.Equal("4 tools", ToolRuns.GroupSummary(ToolGroup.NetworkStorage, new Dictionary<string, ToolRun> { ["ResetOneDriveButton"] = Run(RunVerdict.Requested, "Reset requested") }));
-        Assert.Equal("7 tools", SignIn(Run(RunVerdict.None)));
+        Assert.Equal("5 tools", SignIn(Run(RunVerdict.None)));
         foreach (var result in Enum.GetValues(typeof(RunVerdict)).Cast<RunVerdict>())
         {
             Assert.DoesNotContain("ended", SignIn(Run(result)), StringComparison.OrdinalIgnoreCase);
@@ -284,7 +284,9 @@ public class AppToolRunsTests
         var now = new DateTime(2026, 11, 14, 15, 0, 0, DateTimeKind.Utc);
         var tool = ToolCatalog.ByButton("FreeSpaceButton");
         ToolRun Run(string outcome) => new() { Log = new StoredRunLog { StartedUtc = new DateTime(2026, 11, 14, 9, 42, 0, DateTimeKind.Utc) }, Result = RunVerdict.Ended, Outcome = outcome };
-        Assert.Equal("Nothing to repair · today 10:42", ToolRuns.RowText(tool, Run("Nothing to repair"), zone, now));
+        Assert.Equal("OK · today 10:42", ToolRuns.RowText(tool, Run("Nothing to repair"), zone, now));
+        // A result older than 24 hours may no longer be true: the row says nothing.
+        Assert.Equal("", ToolRuns.RowText(tool, Run("Nothing to repair"), zone, now.AddHours(25)));
         Assert.Equal("Ran today 10:42", ToolRuns.RowText(tool, Run(""), zone, now));
         Assert.Equal("10:42 · Word · Not confirmed", ToolRuns.RecentLine("Word", new DateTime(2026, 11, 14, 9, 42, 0, DateTimeKind.Utc), RunVerdict.Ended, "Not confirmed", zone, now));
         Assert.Equal("10:42 · Free up disk space", ToolRuns.RecentLine("Free up disk space", new DateTime(2026, 11, 14, 9, 42, 0, DateTimeKind.Utc), RunVerdict.Ended, "", zone, now));
@@ -310,8 +312,8 @@ public class AppToolRunsTests
         Assert.Equal(3, latest.Count);
         Assert.Equal("", ToolCatalog.ByButton("LogsButton").LogKey);
         // Every other tool's log name is its action or its check's name.
-        Assert.Equal(21, ToolCatalog.All.Count(t => t.LogKey.Length > 0));
-        Assert.Equal(21, ToolCatalog.All.Select(t => t.LogKey).Where(k => k.Length > 0).Distinct().Count());
+        Assert.Equal(23, ToolCatalog.All.Count(t => t.LogKey.Length > 0));
+        Assert.Equal(23, ToolCatalog.All.Select(t => t.LogKey).Where(k => k.Length > 0).Distinct().Count());
         // The compliance check's run logs carry its name.
         Assert.Equal("Checkcompliancesettings", ToolCatalog.ByButton("ComplianceButton").LogKey);
         Assert.Equal("ClearTeamscache", ToolCatalog.ByButton("TeamsCacheButton").LogKey);
@@ -326,14 +328,14 @@ public class AppToolRunsTests
     public void A_groups_summary_counts_its_tools_and_says_how_their_last_runs_ended_in_words()
     {
         ToolRun Run(string time, RunVerdict result) => new() { Log = new StoredRunLog { StartedUtc = DateTime.Parse(time, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal) }, Result = result };
-        Assert.Equal("4 tools", ToolRuns.GroupSummary(ToolGroup.Apps, new Dictionary<string, ToolRun>()));
-        Assert.Equal("7 tools · last run OK", ToolRuns.GroupSummary(ToolGroup.WindowsSecurity, new Dictionary<string, ToolRun> { ["SyncClockButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Ok) }));
-        Assert.Equal("7 tools · 1 warning", ToolRuns.GroupSummary(ToolGroup.SignIn, new Dictionary<string, ToolRun>
+        Assert.Equal("5 tools", ToolRuns.GroupSummary(ToolGroup.Apps, new Dictionary<string, ToolRun>()));
+        Assert.Equal("4 tools · last run OK", ToolRuns.GroupSummary(ToolGroup.Windows, new Dictionary<string, ToolRun> { ["SyncClockButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Ok) }));
+        Assert.Equal("5 tools · 1 warning", ToolRuns.GroupSummary(ToolGroup.Microsoft365, new Dictionary<string, ToolRun>
         {
             ["TeamsCacheButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Check),
-            ["RefreshSignInButton"] = Run("2026-11-12T10:00:00Z", RunVerdict.Ok),
+            ["WordSafeButton"] = Run("2026-11-12T10:00:00Z", RunVerdict.Ok),
         }));
-        Assert.Equal("4 tools · 1 problem · 1 warning", ToolRuns.GroupSummary(ToolGroup.Apps, new Dictionary<string, ToolRun>
+        Assert.Equal("5 tools · 1 problem · 1 warning", ToolRuns.GroupSummary(ToolGroup.Apps, new Dictionary<string, ToolRun>
         {
             ["FullResetButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Problem),
             ["PortalButton"] = Run("2026-11-12T08:00:00Z", RunVerdict.Check),
@@ -342,7 +344,7 @@ public class AppToolRunsTests
         // A tool of another group does not count.
         Assert.Equal("4 tools", ToolRuns.GroupSummary(ToolGroup.NetworkStorage, new Dictionary<string, ToolRun> { ["SyncClockButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Problem) }));
         // A requested start adds no badge to its tile.
-        Assert.Equal("7 tools", ToolRuns.GroupSummary(ToolGroup.SignIn, new Dictionary<string, ToolRun> { ["WordSafeButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Requested) }));
+        Assert.Equal("5 tools", ToolRuns.GroupSummary(ToolGroup.Microsoft365, new Dictionary<string, ToolRun> { ["WordSafeButton"] = Run("2026-11-12T09:00:00Z", RunVerdict.Requested) }));
     }
 
     [Fact]
@@ -380,7 +382,7 @@ public class AppToolRunsTests
         // A run with an outcome in words says it instead of a result word.
         var started = new ToolRun { Log = run.Log, Result = RunVerdict.Requested, Outcome = "Start requested" };
         Assert.Equal("Start requested · today 11:31", ToolRuns.RowText(ToolCatalog.ByButton("WordSafeButton"), started, zone, now));
-        Assert.Equal("Not run yet", ToolRuns.RowText(ToolCatalog.ByButton("TeamsCacheButton"), null, zone, now));
+        Assert.Equal("", ToolRuns.RowText(ToolCatalog.ByButton("TeamsCacheButton"), null, zone, now));
         Assert.Equal("Opens a folder", ToolRuns.RowText(ToolCatalog.ByButton("LogsButton"), null, zone, now));
         // The row's name for assistive technology says it all, so it never equals the Run button's name (the tool's name).
         EndpointToolbelt.Tests.MainWindowPagesTests.OnSta(() =>
@@ -389,7 +391,7 @@ public class AppToolRunsTests
             // The short time on screen; the full date and time in the name and on the status's tooltip.
             Assert.Equal("WARNING · today 11:31", row.ResultText);
             Assert.Equal("2026-11-12 11:31", row.ResultToolTip);
-            Assert.Equal("Clear Teams cache, Sign-in & Microsoft 365. Closes Teams and clears its cache in your profile. Last run: WARNING, 2026-11-12 11:31.", row.AccessibleName);
+            Assert.Equal("Clear Teams cache, Microsoft 365. Closes Teams and clears its cache in your profile. Last run: WARNING, 2026-11-12 11:31.", row.AccessibleName);
             Assert.NotEqual(row.Name, row.AccessibleName);
             Assert.Equal("Selected", row.SelectedTag);
             Assert.Equal("ToolRow_TeamsCache", row.RowId);

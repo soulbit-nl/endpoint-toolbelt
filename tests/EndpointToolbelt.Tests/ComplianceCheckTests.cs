@@ -57,7 +57,7 @@ public class ComplianceCheckTests
         Assert.Contains("Check status", path.Intro);
         // The check is a tool of For IT that runs in the app, read-only.
         var tool = ToolCatalog.ByButton("ComplianceButton");
-        Assert.Equal(ToolGroup.WindowsSecurity, tool.Group);
+        Assert.Equal(ToolGroup.Defender, tool.Group);
         Assert.Equal(CompliancePath.CheckName, tool.CheckName);
         Assert.False(tool.InService);
         Assert.Empty(ToolCatalog.Facts(tool));

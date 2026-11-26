@@ -694,7 +694,7 @@
                 </StackPanel>
 
                 <!-- For IT support (the last tab, one column at every size): the title and its one
-                     line, the search, the four groups as tiles, the report and support package, and the recent
+                     line, the search, the six groups as tiles, the report and support package, and the recent
                      runs; a tile opens its tools, a tool its detail page in place, each with Back (the pattern of a
                      problem path). Each tool has its one Run (or Open) button on its detail page. -->
                 <StackPanel x:Name="ItPage" Visibility="Collapsed">
@@ -726,11 +726,12 @@
                             <TextBlock x:Name="ItPathText" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" />
                         </DockPanel>
 
-                        <!-- The four groups, each with its tools and how their last runs ended. -->
+                        <!-- The six groups, each with its tools and how their last runs ended. At most five tools a group, so every
+                             group fits the default window with its status shown. -->
                         <UniformGrid x:Name="CategoryTiles" Columns="2" Margin="0,4,-8,0">
                             <Button x:Name="AppsTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
                                 <DockPanel>
-                                    <Path Style="{StaticResource StrokeIcon}" Data="{StaticResource IconApps}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconApps}" Data="{StaticResource IconApps}" Margin="0,0,10,0" VerticalAlignment="Top" />
                                     <StackPanel>
                                         <TextBlock Text="Apps" FontWeight="SemiBold" TextWrapping="Wrap" />
                                         <TextBlock x:Name="AppsTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
@@ -739,25 +740,43 @@
                             </Button>
                             <Button x:Name="SignInTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
                                 <DockPanel>
-                                    <Path Style="{StaticResource StrokeIcon}" Data="{StaticResource IconPerson}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconSignIn}" Data="{StaticResource IconPerson}" Margin="0,0,10,0" VerticalAlignment="Top" />
                                     <StackPanel>
-                                        <TextBlock Text="Sign-in &amp; Microsoft 365" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="Sign-in" FontWeight="SemiBold" TextWrapping="Wrap" />
                                         <TextBlock x:Name="SignInTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Button>
+                            <Button x:Name="MicrosoftTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
+                                <DockPanel>
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconMicrosoft365}" Data="{StaticResource IconDocument}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <StackPanel>
+                                        <TextBlock Text="Microsoft 365" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="MicrosoftTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
                             <Button x:Name="WindowsTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
                                 <DockPanel>
-                                    <Path Style="{StaticResource StrokeIcon}" Data="{StaticResource IconShield}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconWindows}" Data="{StaticResource IconWindow}" Margin="0,0,10,0" VerticalAlignment="Top" />
                                     <StackPanel>
-                                        <TextBlock Text="Windows &amp; security" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="Windows" FontWeight="SemiBold" TextWrapping="Wrap" />
                                         <TextBlock x:Name="WindowsTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Button>
+                            <Button x:Name="DefenderTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
+                                <DockPanel>
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconDefender}" Data="{StaticResource IconShield}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <StackPanel>
+                                        <TextBlock Text="Defender &amp; security" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="DefenderTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
                             <Button x:Name="NetworkTile" Style="{StaticResource TileButton}" Click="OnCategoryTile">
                                 <DockPanel>
-                                    <Path Style="{StaticResource StrokeIcon}" Data="{StaticResource IconConnect}" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <Path Style="{StaticResource StrokeIcon}" Stroke="{DynamicResource TileIconNetwork}" Data="{StaticResource IconConnect}" Margin="0,0,10,0" VerticalAlignment="Top" />
                                     <StackPanel>
                                         <TextBlock Text="Network &amp; storage" FontWeight="SemiBold" TextWrapping="Wrap" />
                                         <TextBlock x:Name="NetworkTileSummary" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
@@ -782,6 +801,16 @@
                                        Focusable="True" KeyboardNavigation.IsTabStop="False" FocusVisualStyle="{StaticResource FocusOutline}"
                                        AutomationProperties.AutomationId="ToolDetailTitle" />
                             <TextBlock x:Name="ToolDetailLine" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <!-- Retry work apps and settings only: the work apps at the last diagnosis in one sentence, then
+                                 the link to the app path. One sentence, so the page fits the default window. -->
+                            <TextBlock x:Name="RetryToolSummary" Visibility="Collapsed" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12"
+                                       AutomationProperties.AutomationId="RetryToolSummary">
+                                <Run x:Name="RetryToolSummaryText" />
+                                <Hyperlink x:Name="RetryToolAppsLink" Style="{StaticResource QuietHyperlink}" Foreground="{DynamicResource LinkText}" Click="OnRetryToolApps"
+                                           AutomationProperties.AutomationId="RetryToolAppsLink"
+                                           AutomationProperties.Name="Show the apps: An app from Company Portal won't install"
+                                           AutomationProperties.HelpText="Opens the app list, where each work app has its own state and next step.">Show the apps</Hyperlink>
+                            </TextBlock>
                             <!-- Only the facts that say something: the typical time when it is a minute or more,
                                  and what the tool closes or changes when it does; no row when neither applies. -->
                             <UniformGrid x:Name="ToolFacts" Columns="2" Margin="0,10,0,0">
@@ -794,11 +823,14 @@
                                     <TextBlock x:Name="FactChanges" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </UniformGrid>
-                            <!-- The twenty-two tools' buttons (each tool in exactly one place); only the tool shown has
+                            <!-- The twenty-four tools' buttons (each tool in exactly one place); only the tool shown has
                                  its button visible. Each button names its action (its text comes from the tool catalog); its automation name is the tool's
                                  name; the page's dark primary button, with the red outline for the two heavy tools.
                                  A tool's row presses the same button. No access keys: they repeat. -->
                             <WrapPanel x:Name="ToolRunButtons" Margin="0,12,0,0">
+                                <Button x:Name="RetryToolButton" Style="{StaticResource PrimaryRunButton}" Click="OnRetry" Visibility="Collapsed"
+                                        AutomationProperties.Name="Retry work apps and settings"
+                                        AutomationProperties.HelpText="Asks Intune to check this PC again and retries failed apps. While other people are signed in to this PC, the apps are retried later by themselves. It affects more than one app." />
                                 <Button x:Name="ClearCacheButton" Style="{StaticResource PrimaryRunButton}" Click="OnClearCache" Visibility="Collapsed"
                                         AutomationProperties.Name="Clear downloaded app content" />
                                 <Button x:Name="LogsButton" Style="{StaticResource PrimaryRunButton}" Click="OnOpenLogs" Visibility="Collapsed"
@@ -831,6 +863,9 @@
                                 <Button x:Name="UpdateDefenderButton" Style="{StaticResource PrimaryRunButton}" Click="OnUpdateDefender" Visibility="Collapsed"
                                         AutomationProperties.Name="Update Defender definitions"
                                         AutomationProperties.HelpText="Asks Microsoft Defender Antivirus to update its security intelligence now." />
+                                <Button x:Name="CheckDefenderButton" Style="{StaticResource PrimaryRunButton}" Click="OnCheckDefender" Visibility="Collapsed"
+                                        AutomationProperties.Name="Check Defender blocks"
+                                        AutomationProperties.HelpText="Reads what Microsoft Defender detected or blocked in the last 14 days: threats, attack surface reduction rules, protected folders and network connections. Nothing is changed." />
                                 <Button x:Name="BackupKeyButton" Style="{StaticResource PrimaryRunButton}" Click="OnBackupKey" Visibility="Collapsed"
                                         AutomationProperties.Name="Back up recovery key"
                                         AutomationProperties.HelpText="Backs up the BitLocker recovery key of the system drive to Microsoft Entra ID. Nothing on the drive changes." />
@@ -872,13 +907,16 @@
 
                     <!-- Below the tiles. -->
                     <StackPanel x:Name="ItExtras">
-                        <!-- The two buttons say what they do; no heading above them. -->
-                        <WrapPanel Margin="0,8,0,0">
-                            <Button x:Name="ReportButton" Style="{StaticResource SecondaryButton}" Content="_View device report" Click="OnReport"
-                                    AutomationProperties.HelpText="Opens a text report of this device and its health checks." />
-                            <Button x:Name="PackageButton" Style="{StaticResource SecondaryButton}" Content="Create support pac_kage" Click="OnPackage"
-                                    AutomationProperties.HelpText="Collects logs and the device state into a zip file in your Downloads folder, for your IT support." />
-                        </WrapPanel>
+                        <!-- The buttons say what they do; no heading above them. One row of equal widths; a text wraps
+                             inside its button when the window is narrow. -->
+                        <UniformGrid x:Name="ReportButtons" Columns="3" Margin="0,8,-8,0">
+                            <Button x:Name="ReportButton" Style="{StaticResource RowButton}" Content="_View report" Click="OnReport"
+                                    AutomationProperties.HelpText="View device report: opens a text report of this device and its health checks." />
+                            <Button x:Name="HtmlReportButton" Style="{StaticResource RowButton}" Content="Export HTML" Click="OnHtmlReport"
+                                    AutomationProperties.HelpText="Export report as HTML: runs the read-only checks, then saves the device report with every work app as one web page in your Downloads folder, for your IT support, and opens it." />
+                            <Button x:Name="PackageButton" Style="{StaticResource RowButton}" Content="Support pac_kage" Click="OnPackage"
+                                    AutomationProperties.HelpText="Create support package: collects logs and the device state into a zip file in your Downloads folder, for your IT support." />
+                        </UniformGrid>
                         <DockPanel>
                             <Button x:Name="RunsFolderLink" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="All runs" VerticalAlignment="Bottom" Margin="0,6,0,6"
                                     Click="OnOpenRunsFolder" AutomationProperties.Name="All runs: open the runs folder"
@@ -927,6 +965,11 @@
                                VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="StatusText" />
                     <TextBlock x:Name="StatusText" Text="Checking this device..." Visibility="Collapsed" />
                 </DockPanel>
+                <!-- After a read-only check, its answer in a sentence ("Microsoft Defender logged 1 detection ..."), so
+                     it shows without opening the details. No live region: the status line's name is the same
+                     sentence and is announced, so a screen reader would say it twice. -->
+                <TextBlock x:Name="StatusAnswerText" FontSize="13" Margin="0,6,0,0" Visibility="Collapsed" TextWrapping="Wrap"
+                           AutomationProperties.AutomationId="StatusAnswerText" />
                 <!-- After a tool, the health checks run again; this line says its row's new state ("Clock: now OK"). -->
                 <TextBlock x:Name="StatusHealthText" FontSize="12" Margin="0,4,0,0" Visibility="Collapsed" TextTrimming="CharacterEllipsis"
                            AutomationProperties.AutomationId="StatusHealthText" AutomationProperties.LiveSetting="Polite" />
@@ -967,11 +1010,29 @@
                 </Border>
                 </StackPanel>
                 </Border>
+                <!-- A newer version is available: shown once per version at start-up while the version check is on. -->
+                <Border x:Name="UpdateNotice" Visibility="Collapsed" Margin="0,4,0,0" Padding="8,4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource ControlRadius}"
+                        AutomationProperties.AutomationId="UpdateNotice">
+                    <!-- In reading order for Tab and UI Automation: the sentence, Release notes, close. -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="UpdateNoticeText" Grid.Column="0" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.AutomationId="UpdateNoticeText"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <Button x:Name="UpdateNoticeLink" Grid.Column="1" Style="{StaticResource LinkButton}" Content="Release notes" Click="OnUpdateReleaseNotes" VerticalAlignment="Center" Margin="12,0,0,0"
+                                AutomationProperties.AutomationId="UpdateNoticeLink" AutomationProperties.HelpText="Opens the product's page with its release notes in your browser." />
+                        <Button x:Name="UpdateNoticeClose" Grid.Column="2" Style="{StaticResource LinkButton}" Content="✕" Click="OnUpdateNoticeClose" VerticalAlignment="Center" Margin="12,0,0,0"
+                                AutomationProperties.AutomationId="UpdateNoticeClose" AutomationProperties.Name="Close this notice" />
+                    </Grid>
+                </Border>
                 <!-- Footer: one line with the version, About and Close. The organization's support contact is on
                      Home ("Need a person?") and on "My problem is not listed", not on every page. -->
                 <DockPanel Margin="0,4,0,0">
                     <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource CompactButton}" Content="_Close" Margin="16,0,0,0" VerticalAlignment="Center" Click="OnClose" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Ab_out" Click="OnAbout" VerticalAlignment="Center" />
+                    <Button x:Name="AboutButton" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Ab_out" Click="OnAbout" VerticalAlignment="Center" />
                     <TextBlock x:Name="VersionText" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
             </StackPanel>
@@ -984,8 +1045,14 @@
         <Border x:Name="Drawer" Grid.Column="1" Visibility="Collapsed" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
             <ui:ShownOnlyScrollViewer x:Name="DrawerScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel Margin="20,16,20,16">
-                    <!-- The whole status, and the two copy links, behind View details. -->
-                    <TextBlock x:Name="DrawerStatusText" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,6" AutomationProperties.AutomationId="DrawerStatusText" />
+                    <!-- The whole status, and the two copy links, behind View details. The drawer's own close
+                         button hides the details only; the window's close button still closes the app. -->
+                    <DockPanel Margin="0,0,0,6">
+                        <Button x:Name="DrawerCloseButton" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="✕" FontSize="14"
+                                VerticalAlignment="Top" Margin="12,0,0,0" Click="OnDrawerClose" ToolTip="Close details"
+                                AutomationProperties.AutomationId="DrawerCloseButton" AutomationProperties.Name="Close details" />
+                        <TextBlock x:Name="DrawerStatusText" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.AutomationId="DrawerStatusText" />
+                    </DockPanel>
                     <WrapPanel Margin="0,0,0,8">
                         <!-- Shown with a run or check, also while it runs: a short ticket text with the run's
                              reference, without device or user name. Alt+T. -->
@@ -1005,7 +1072,7 @@
                             <DataTemplate>
                                 <ui:AccessibleRow Background="{DynamicResource SurfaceBackground}" Margin="0,0,0,8" BorderBrush="{Binding AccentBrush}"
                                         BorderThickness="4,0,0,0" Padding="12,8" Focusable="True" FocusVisualStyle="{StaticResource FocusOutline}"
-                                        AutomationProperties.Name="{Binding AccessibleName}">
+                                        AutomationProperties.Name="{Binding AccessibleName}" AutomationProperties.HelpText="{Binding AccessibleHelp}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}" FontSize="11" FontWeight="Bold" Foreground="{Binding AccentBrush}" />
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />

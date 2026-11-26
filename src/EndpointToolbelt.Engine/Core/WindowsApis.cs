@@ -106,6 +106,21 @@ public sealed class DefenderInfo
     public bool ServiceEnabled { get; set; }
     public string Version { get; set; } = "";
     public DateTime? UpdatedUtc { get; set; }
+
+    /// <summary>When the last quick scan ended (not a custom scan other software asks for); null when none is recorded or it cannot be read.</summary>
+    public DateTime? QuickScanEndUtc { get; set; }
+
+    /// <summary>When the last full scan ended; null when none is recorded or it cannot be read.</summary>
+    public DateTime? FullScanEndUtc { get; set; }
+
+    /// <summary>Whether real-time protection is on now; null when it cannot be read.</summary>
+    public bool? RealTimeProtection { get; set; }
+
+    /// <summary>Whether Microsoft Defender Antivirus is on now; null when it cannot be read.</summary>
+    public bool? Antivirus { get; set; }
+
+    /// <summary>Whether Microsoft Defender Antispyware is on now; null when it cannot be read.</summary>
+    public bool? Antispyware { get; set; }
 }
 
 /// <summary>The WMI seam: the device readouts the actions need.</summary>
@@ -301,12 +316,41 @@ public sealed class WmiDeviceInfo : IDeviceInfo
             {
                 info.UpdatedUtc = ManagementDateTimeConverter.ToDateTime(dmtf).ToUniversalTime();
             }
+            // The health facts of Check Defender blocks: each one on its own, so a property an older
+            // Defender does not have leaves only that fact unknown.
+            info.QuickScanEndUtc = DefenderTime(status, "QuickScanEndTime");
+            info.FullScanEndUtc = DefenderTime(status, "FullScanEndTime");
+            info.RealTimeProtection = DefenderFlag(status, "RealTimeProtectionEnabled");
+            info.Antivirus = DefenderFlag(status, "AntivirusEnabled");
+            info.Antispyware = DefenderFlag(status, "AntispywareEnabled");
             return info;
         }
         catch (Exception)
         {
             return null;
         }
+    }
+
+    /// <summary>A date property of MSFT_MpComputerStatus in UTC; null when missing, unreadable or before 2000 (Defender's "never").</summary>
+    private static DateTime? DefenderTime(ManagementBaseObject status, string name)
+    {
+        try
+        {
+            if (status[name] is not string dmtf || dmtf.Length == 0) { return null; }
+            var utc = ManagementDateTimeConverter.ToDateTime(dmtf).ToUniversalTime();
+            return utc.Year < 2000 ? null : utc;
+        }
+        catch (Exception ex) when (ex is ManagementException or ArgumentException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>A flag of MSFT_MpComputerStatus; null when missing or unreadable.</summary>
+    private static bool? DefenderFlag(ManagementBaseObject status, string name)
+    {
+        try { return status[name] as bool?; }
+        catch (ManagementException) { return null; }
     }
 }
 

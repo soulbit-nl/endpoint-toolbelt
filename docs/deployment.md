@@ -39,7 +39,9 @@ In PowerShell, quote the product code (`'{ProductCode}'`) and use `$env:TEMP`.
   Start Menu shortcut "Endpoint Toolbelt".
 - **Upgrade** keeps configuration values, cooldown state and per-user data. Values
   passed on the command line replace the stored ones. Open app windows are closed
-  through Restart Manager, and the service also asks connected apps to exit.
+  through Restart Manager, and the service also asks connected apps to exit. An upgrade a
+  person starts while the app is open says so first, with **Close it and continue** (the
+  setup closes the app) and **Exit**; a silent install closes it without asking.
   The service stops within 25 seconds. An action that is still running is stopped and
   reported to its user as *interrupted*; work it already handed to Windows may finish.
 - **Repair** restores files, the service, security descriptors and registry values.
@@ -77,6 +79,7 @@ WiX elements only):
   `D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)`,
   so interactive users may start the service (the app does when it is stopped) but not
   stop or reconfigure it.
+- **Screens** (from the next release): an install a person starts shows, while nobody chose for the device (a first install, or an upgrade of a device without the choice), "Endpoint Toolbelt is ready to install." with the check box "Check for new versions at start-up" (checked; cleared, the install writes `UPDATECHECK=0`) and Install, then a progress screen and then "Endpoint Toolbelt is installed." with Finish (the setup never starts the app; the user opens it from the Start menu); the same package again says it is already installed; a failed install points to the install log; an administrative install (`msiexec /a`) says the package is unpacked. A silent install (`/qn`, Intune) shows none of them.
 - **Programs and Features:** the comment, the icon, no Modify button, and the About dialog's
   two links: `ARPURLINFOABOUT` (`https://soulbit.app/go/endpoint-toolbelt`) and `ARPHELPLINK`
   (`https://github.com/soulbit-nl/endpoint-toolbelt`), from 1.0.1.

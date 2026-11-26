@@ -127,7 +127,8 @@ public sealed class CardRow
         Detail = card.Detail;
         NextStepText = card.NextStepLine;
         SupportText = card.SupportLine;
-        AccessibleName = card.AccessibleText;
+        AccessibleName = card.AccessibleName;
+        AccessibleHelp = card.AccessibleHelp;
         AccentBrush = ThemeBrush.Get(card.Kind switch
         {
             CardKind.Error => "ToneError",
@@ -153,6 +154,9 @@ public sealed class CardRow
 
     /// <summary>The whole card, so a screen reader reads the evidence and both next steps too.</summary>
     public string AccessibleName { get; }
+
+    /// <summary>What a long card's name leaves out, read as its help text; empty for a card that fits.</summary>
+    public string AccessibleHelp { get; }
 }
 
 /// <summary>

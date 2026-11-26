@@ -325,6 +325,25 @@ public class AppWordingTests
     }
 
     [Fact]
+    public void A_long_card_keeps_its_name_short_and_reads_its_steps_as_help()
+    {
+        var shortCard = ResultCard.From(FindingSeverity.Error, "Broken", "evidence", "Restart.", "Check the policy.");
+        Assert.Equal(shortCard.AccessibleText, shortCard.AccessibleName);
+        Assert.Equal("", shortCard.AccessibleHelp);
+
+        var detail = new string('d', 300);
+        var steps = ResultCard.From(FindingSeverity.Warning, "Blocked", detail, new string('n', 150), new string('s', 150));
+        Assert.True(steps.AccessibleText.Length > ResultCard.MaxAccessibleName);
+        Assert.Equal("WARNING: Blocked. " + detail, steps.AccessibleName);
+        Assert.Equal(steps.NextStepLine + " " + steps.SupportLine, steps.AccessibleHelp);
+
+        var huge = ResultCard.From(FindingSeverity.Info, "Long", new string('d', 600), "Next.", "");
+        Assert.Equal("INFO: Long.", huge.AccessibleName);
+        Assert.StartsWith(new string('d', 600), huge.AccessibleHelp);
+        Assert.EndsWith("Next step: Next.", huge.AccessibleHelp);
+    }
+
+    [Fact]
     public void The_app_diagnosis_promises_nothing_and_says_it_changed_nothing()
     {
         // The diagnosis reads; its status never says fixed or done, and success means only "read".
@@ -477,7 +496,7 @@ public class AppWindowRuleTests
     public void Without_the_service_only_the_repairs_are_off()
     {
         var all = (AppButton[])Enum.GetValues(typeof(AppButton));
-        var needService = new[] { AppButton.Retry, AppButton.Package, AppButton.ClearCache, AppButton.FullReset, AppButton.RepairWu, AppButton.BackupKey, AppButton.SyncClock, AppButton.UpdateDefender, AppButton.FreeSpace, AppButton.Diagnose, AppButton.RenewIp, AppButton.CheckWu };
+        var needService = new[] { AppButton.Retry, AppButton.Package, AppButton.ClearCache, AppButton.FullReset, AppButton.RepairWu, AppButton.BackupKey, AppButton.SyncClock, AppButton.UpdateDefender, AppButton.FreeSpace, AppButton.Diagnose, AppButton.RenewIp, AppButton.CheckWu, AppButton.CheckDefender };
         foreach (var button in all)
         {
             Assert.True(ButtonRules.IsEnabled(button, busy: false, serviceMissing: false));

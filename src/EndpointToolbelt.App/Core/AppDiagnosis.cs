@@ -253,6 +253,12 @@ public sealed class AppFinding
     /// </summary>
     public bool ForBothScopes { get; set; }
 
+    /// <summary>
+    /// Merged for both scopes while one of them is not only offered (required for the device, available for the
+    /// user, say): the IME retries that one, so the merged app is not only offered in Company Portal.
+    /// </summary>
+    public bool OtherScopeNotOffered { get; set; }
+
     /// <summary>A warning said before the step (Retry work apps and settings affects more than this app).</summary>
     public string Caveat { get; set; } = "";
 
@@ -401,6 +407,17 @@ public static class AppDecisions
     public const int ShortListRows = 3;
 
     /// <summary>
+    /// The heading when no app needs attention: the page then lists every app at once instead of an
+    /// empty short list with only "Show all".
+    /// </summary>
+    public static string NothingNeedsAttention(int apps)
+        => apps > NothingNeedsAttentionListsUpTo ? "No app needs attention."
+            : apps == 1 ? "No app needs attention. Your work app:" : "No app needs attention. Your " + apps.ToString(System.Globalization.CultureInfo.InvariantCulture) + " work apps:";
+
+    /// <summary>Up to this many apps the page lists them all when none needs attention; above it, Show all.</summary>
+    public const int NothingNeedsAttentionListsUpTo = 12;
+
+    /// <summary>
     /// The short app list: what needs attention, what is on its way, and an app the user took a step
     /// for. An app that is only offered in Company Portal and was never tried is not a problem: it is
     /// in the full list and the search finds it.
@@ -517,6 +534,7 @@ public static class AppDecisions
         {
             var keep = pair.OrderByDescending(a => a.App.ObservedUtc ?? DateTime.MinValue).First();
             keep.ForBothScopes = true;
+            keep.OtherScopeNotOffered = pair.Any(a => !string.Equals(a.App.Intent, "available", StringComparison.OrdinalIgnoreCase));
             foreach (var other in pair.Where(a => !ReferenceEquals(a, keep))) { apps.Remove(other); }
         }
     }

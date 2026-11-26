@@ -202,8 +202,28 @@ public static class PostCheck
     public static List<AppFinding> Retried(AppDiagnosis diagnosis)
         => diagnosis == null || diagnosis.Run != DiagnosisRunState.Finished
             ? new List<AppFinding>()
-            // An MSI line-of-business app is not retried by Retry work apps and settings (the MDM stack retries it), nor is an MSIX one.
-            : diagnosis.Apps.Where(a => a.Case != AppCase.Unmatched && a.Observation == AppObservation.Failed && RetriedCases.Contains(a.Case) && !string.IsNullOrEmpty(a.App.AppId) && !a.App.IsMdmLob).ToList();
+            // An MSI line-of-business app is not retried by Retry work apps and settings (the MDM stack retries it), nor is an MSIX one,
+            // nor an app offered in Company Portal: the IME never starts its next attempt, only the user does (Install or Retry there),
+            // so no newer record would ever come and its post-check would wait for evidence until the step is history.
+            : diagnosis.Apps.Where(a => a.Case != AppCase.Unmatched && a.Observation == AppObservation.Failed && RetriedCases.Contains(a.Case) && !string.IsNullOrEmpty(a.App.AppId) && !a.App.IsMdmLob && !OfferedOnly(a)).ToList();
+
+    /// <summary>
+    /// The app is only offered in Company Portal: assigned as available, and, when its device and user records were
+    /// merged, in both scopes. Only the user starts its next attempt.
+    /// </summary>
+    public static bool OfferedOnly(AppFinding app)
+        => app != null && string.Equals(app.App?.Intent, "available", StringComparison.OrdinalIgnoreCase) && !app.OtherScopeNotOffered;
+
+    /// <summary>
+    /// The Retry work apps and settings steps recorded for an app the diagnosis lists as only offered in Company
+    /// Portal: the IME does not retry such an app, so the step is removed and the app shows its own finding and
+    /// next step again instead of "awaiting evidence" for 7 days.
+    /// </summary>
+    public static List<RemedyRecord> NotRetriedByIme(IEnumerable<RemedyRecord> records, AppDiagnosis diagnosis)
+        => diagnosis == null || diagnosis.Run != DiagnosisRunState.Finished
+            ? new List<RemedyRecord>()
+            : (records ?? Enumerable.Empty<RemedyRecord>()).Where(r => r != null && r.Kind == RemedyKind.RetryAppsAndPolicies
+                && diagnosis.Apps.Any(a => a.Case != AppCase.Unmatched && SameApp(r.AppId, a.App.AppId) && (r.Scope == a.App.Scope || a.ForBothScopes) && OfferedOnly(a))).ToList();
 
     /// <summary>
     /// Compares the remedy with a newer diagnosis. Only a finished diagnosis other than the one the
@@ -581,8 +601,23 @@ public static class PostCheck
         return group.All(r => r.State == PostCheckState.Detected) ? AppsAfterRetry.AllDetected : AppsAfterRetry.Unknown;
     }
 
+    /// <summary>
+    /// The apps of the diagnosis shown that need attention and are not among <paramref name="checkedRemedies"/>:
+    /// the status after a post-check names them too, so it never reads OK while the same run found a problem.
+    /// </summary>
+    public static int OtherAttention(AppDiagnosis shown, IEnumerable<RemedyRecord> checkedRemedies)
+    {
+        if (shown == null) { return 0; }
+        var checkedSet = new HashSet<RemedyRecord>(checkedRemedies ?? Enumerable.Empty<RemedyRecord>());
+        return shown.Attention.Count(a => a.Remedy == null || !checkedSet.Contains(a.Remedy));
+    }
+
+    /// <summary>"1 other app needs attention" / "6 other apps need attention".</summary>
+    public static string OthersText(int others) => Words.Count(others, "other app") + (others == 1 ? " needs" : " need") + " attention";
+
     /// <summary>The status line after a diagnosis that checked remedies other than a Retry run's.</summary>
-    public static (string Text, Tone Tone) Status(IReadOnlyCollection<RemedyRecord> checkedNow)
+    /// <param name="otherApps">The apps of the same diagnosis that need attention besides the checked ones (<see cref="OtherAttention"/>).</param>
+    public static (string Text, Tone Tone) Status(IReadOnlyCollection<RemedyRecord> checkedNow, int otherApps = 0)
     {
         var list = (checkedNow ?? Array.Empty<RemedyRecord>()).ToList();
         if (list.Count == 0) { return ("", Tone.Neutral); }
@@ -595,7 +630,8 @@ public static class PostCheck
         if (failed.Count > 0) { parts.Add("Failed again: " + Names(failed) + "."); }
         if (unknown.Count > 0) { parts.Add("Result not known: " + Names(unknown) + "; copy details for IT."); }
         if (waiting.Count > 0) { parts.Add("Awaiting evidence: " + Names(waiting) + "; check again later."); }
-        var tone = failed.Count > 0 || unknown.Count > 0 ? Tone.Warning : waiting.Count > 0 ? Tone.Neutral : Tone.Success;
+        var tone = failed.Count > 0 || unknown.Count > 0 || otherApps > 0 ? Tone.Warning : waiting.Count > 0 ? Tone.Neutral : Tone.Success;
+        if (otherApps > 0) { parts.Add(OthersText(otherApps) + "; see the list."); }
         return ("Post-check: " + string.Join(" ", parts) + " Nothing was changed.", tone);
     }
 

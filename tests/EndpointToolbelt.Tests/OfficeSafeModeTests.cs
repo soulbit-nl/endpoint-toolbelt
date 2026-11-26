@@ -238,7 +238,7 @@ public class OfficeSafeModeTests
         {
             var tool = ToolCatalog.ByButton(OfficeSafeMode.Button(app));
             Assert.Equal(OfficeSafeMode.ToolName(app), tool.Name);
-            Assert.Equal(ToolGroup.SignIn, tool.Group);
+            Assert.Equal(ToolGroup.Microsoft365, tool.Group);
             Assert.Equal(app, tool.Office);
             Assert.Equal(OfficeSafeMode.AppName(app), tool.ShortName);
             Assert.False(tool.InService);

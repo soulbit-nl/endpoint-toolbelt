@@ -233,7 +233,19 @@ public class PipeAttackTests : IDisposable
             }
             catch (IOException) { }
         }
-        Assert.Equal(ResponseType.Status, Ask(name, new Request { Type = RequestType.GetStatus }).Type);
+        // The server frees a connection slot (at most MaxConnectionsPerUser per user) only once it sees the
+        // connection closed, which can lag the flood on a slow machine: it must serve again within its read
+        // timeout, not at the same instant.
+        Response answer = null;
+        var watch = Stopwatch.StartNew();
+        while (answer == null && watch.Elapsed < PipeServer.RequestReadTimeout + TimeSpan.FromSeconds(10))
+        {
+            try { answer = Ask(name, new Request { Type = RequestType.GetStatus }); }
+            catch (IOException) { answer = null; }
+            if (answer == null) { Thread.Sleep(200); }
+        }
+        Assert.NotNull(answer);
+        Assert.Equal(ResponseType.Status, answer.Type);
     }
 
     [Fact]

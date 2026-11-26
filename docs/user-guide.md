@@ -1,7 +1,7 @@
 # Endpoint Toolbelt user guide
 
 This guide is for you if you use a work PC and something does not work as it should. You do
-not need any technical knowledge. It describes version 1.0.1.
+not need any technical knowledge. It describes version 1.1.2.
 
 ## What Endpoint Toolbelt is
 
@@ -34,6 +34,13 @@ The window has three tabs at the top:
 At the bottom of the window you find the version, **About** and **Close**. If your
 organization set one, **Home** shows how to reach your IT support, as a text or a link, under
 **Need a person?**.
+
+When a newer version of Endpoint Toolbelt exists, a small notice at start-up says it once per new
+version, with a link to its **Release notes** on the product's page; **✕** closes it. **About**
+names the newer version too, and **Check now** there looks at once: it names the newer version,
+with a link to its **Release notes**, or says you have the newest one. The check box **Check for new versions at start-up** in **About**
+switches the look at start-up off and on; off, the app does not look by itself. The installer's
+first screen has the same check box for the whole PC.
 
 ## Check how your PC is doing
 
@@ -228,6 +235,10 @@ again by itself, so nothing is needed. The app then checks your PC again and say
 
 - Select **View details** for the whole result, the steps the repair took and what it changed.
   A repair that changed nothing says so in one line: "Nothing on this device was changed."
+  **✕** at the top of the details closes them; the app stays open.
+- A check that only reads (Check Defender blocks, Check Windows Update, Check Microsoft
+  connections, Check compliance settings) says its answer in a sentence below the result, for
+  example what Microsoft Defender blocked. **View details** shows it in full.
 - On a problem page the app may ask **Does it work now?** Answer **Yes**, **Not yet** or **Not
   tried**. Your answer goes into Copy details for IT.
 - When the result tells you to contact IT support, it also says how.
@@ -316,17 +327,29 @@ Contact IT support first in these cases too:
 
 ## Use For IT support
 
-**For IT support** holds every tool of the app, in four groups: Apps, Sign-in & Microsoft 365,
-Windows & security, and Network & storage. It also has the device report, the support package
-and your recent runs.
+**For IT support** holds every tool of the app, in six groups: Apps, Sign-in, Microsoft 365,
+Windows, Defender & security, and Network & storage. It also has **View report** (the device
+report), **Export HTML**, **Support package** and your three most recent runs (**All runs** opens
+the folder with every run). **Export HTML** first runs the checks that only read (your apps,
+Windows Update, Microsoft Defender, the Microsoft connections and the compliance settings), then
+saves the device report with their results and all your work apps as one web page in your
+Downloads folder, to send to your IT support when they ask for it. The page starts with a summary
+and links to each part.
+
+**Retry work apps and settings** is the first tool of **Apps**, so you can start it at once. Its
+page says in one sentence how your work apps stood at the last read since you opened the app, for
+example "2 of 14 work apps need attention (Contoso Agent, Contoso VPN), read today
+09:12.", and **Show the apps** opens the full list with each app's next step.
 
 Most tools are also offered on **Choose a problem**, for the problem they help with. A few are
 for IT support only; their line ends in "Use it when IT support asks.", for example during a
 phone call. A tool you open from a problem page says "Suggested for:" and that problem. To find a tool, type a word in **Search tools**, such as "clock" or
 "BitLocker", and press **Enter** to open the first one found.
 
-Each tool shows how its last run ended on the line below its name, for example "OK · today
-18:38", "yesterday 19:03" or "15 Nov 19:03". Point at it to see the full date and time.
+Each tool shows how its last run ended on the line below its name when it ran in the last 24
+hours, for example "OK · today 18:38" or "WARNING · yesterday 19:03"; a run that found nothing
+to repair reads OK. An older run shows nothing there, because its result may no longer be true;
+**Recent runs** still lists it. Point at the line to see the full date and time.
 
 ## What Endpoint Toolbelt never does
 
@@ -339,8 +362,9 @@ Each tool shows how its last run ended on the line below its name, for example "
   and waits for your answer.
 - **It never changes your organization's policies.** When a policy holds something back, such as
   a Windows update, the app says so and names who can change it.
-- **It never sends anything by itself.** It has no server of its own and sends nothing in the
-  background. IT support only sees what you send them.
+- **It sends no data about you or your PC.** Once a day it looks on the publisher's website
+  whether a newer version exists (unless that is switched off); that site sees your internet
+  address and the time, as every website does. IT support only sees what you send them.
 
 ## Keyboard shortcuts
 
@@ -359,7 +383,7 @@ You can use the whole app with the keyboard. Press **Tab** to move between butto
 | Alt+B, Alt+Left or Backspace | Back |
 | Alt+D | View details |
 | Alt+T | Copy details for IT, in View details |
-| Alt+K | Create support package, in For IT support |
+| Alt+K | Support package, in For IT support |
 | Alt+H, Ctrl+F or Ctrl+K | Search tools, in For IT support |
 | Ctrl+F | Search apps, on the app page when the search is shown |
 | Enter | In a search box: open or select the first result |

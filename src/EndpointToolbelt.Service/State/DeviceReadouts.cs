@@ -523,7 +523,54 @@ internal static class ProfileErrorsProbe
         {
             return new ProfileErrorsReadout();
         }
-        return SummarizeTimed(events, WrittenBySessionZero, MachineProbe.NoWindowsHello(machine));
+        return SummarizeTimed(events, WrittenBySessionZero, MachineProbe.NoWindowsHello(machine), path => OfficeInstallationSucceeded(path, ReadOfficeFinalStatus));
+    }
+
+    /// <summary>
+    /// The Office CSP's own status of one installation: FinalStatus under
+    /// HKLM\SOFTWARE\Microsoft\OfficeCSP\&lt;id&gt;, or null when it is not there.
+    /// </summary>
+    private static object ReadOfficeFinalStatus(string id)
+    {
+        try
+        {
+            using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            using var key = hklm.OpenSubKey(@"SOFTWARE\Microsoft\OfficeCSP\" + id, writable: false);
+            return key?.GetValue("FinalStatus");
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>An Office installation's id in a CSP path (./Vendor/MSFT/Office/Installation/&lt;id&gt;/...), or null.</summary>
+    internal static string OfficeInstallationId(string path)
+    {
+        if (path == null) { return null; }
+        var m = OfficeInstallation.Match(path);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex OfficeInstallation =
+        new(@"^\./(?:Device/)?Vendor/MSFT/Office/Installation/([A-Za-z0-9{}-]{1,64})(?:/|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// True when a failed command is on an Office installation that succeeded on this device: the
+    /// Office CSP's FinalStatus of that installation is 70 (succeeded; 60 is failed). A missing status
+    /// or any other value keeps the failure.
+    /// </summary>
+    internal static bool OfficeInstallationSucceeded(string path, Func<string, object> finalStatus)
+    {
+        var id = OfficeInstallationId(path);
+        if (id == null) { return false; }
+        var value = finalStatus(id);
+        return value switch
+        {
+            int number => number == 70,
+            string text => text.Trim() == "70",
+            _ => false,
+        };
     }
 
     /// <summary>The counts and the failed settings, from events without a time (tests and older callers).</summary>
@@ -535,7 +582,7 @@ internal static class ProfileErrorsProbe
     /// machine without Windows Hello for Business (<paramref name="noWindowsHello"/>: a virtual
     /// machine or a multi-session host), its settings are kept apart as not applicable.
     /// </summary>
-    internal static ProfileErrorsReadout SummarizeTimed(IEnumerable<(int Level, int? ProcessId, IEnumerable<object> Values, DateTime? Utc)> events, Func<int?, bool> trusted, bool noWindowsHello = false)
+    internal static ProfileErrorsReadout SummarizeTimed(IEnumerable<(int Level, int? ProcessId, IEnumerable<object> Values, DateTime? Utc)> events, Func<int?, bool> trusted, bool noWindowsHello = false, Func<string, bool> succeeded = null)
     {
         var result = new ProfileErrorsReadout();
         foreach (var (level, pid, values, utc) in events)
@@ -545,6 +592,9 @@ internal static class ProfileErrorsProbe
             var path = values.OfType<string>().FirstOrDefault(v => v.StartsWith("./", StringComparison.Ordinal));
             // Windows reports these on every enrolled device without a consequence: not counted.
             if (KnownHarmless(path)) { result.KnownHarmless++; continue; }
+            // A command on something whose own status says it succeeded (an Office installation the
+            // MDM client sends again): not a failed setting.
+            if (level <= 2 && path != null && succeeded != null && succeeded(path)) { result.AlreadySucceeded++; continue; }
             if (level == 3) { result.Warnings++; continue; }
             var setting = path == null ? null : ShortSetting(path);
             var list = result.Settings;
